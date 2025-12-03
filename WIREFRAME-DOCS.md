@@ -1,62 +1,68 @@
-# Wireframe Documentation Index
+# Meeting Task Tool - Documentation
 
-Choose the right level of detail for your needs:
+This folder contains three levels of documentation for the Meeting Task Tool project.
 
 ---
 
-## 📄 Documentation Levels
+## 📄 Available Documents
 
 ### [01 - Quick Overview](./01-Quick-Overview.md) ⚡
-**5-minute read** | Best for: Clients, executives, quick presentations
+**5-minute read** | Recommended for: Clients, executives, presentations
 
-- What the app does in plain English
-- 4 simple steps how it works
-- What screens you'll see
-- Current status at a glance
+Contents:
+- Plain English explanation of the app
+- 4 simple steps showing how it works
+- Overview of app screens
+- Current development status
 
 ---
 
 ### [02 - Product Guide](./02-Product-Guide.md) 📋
-**15-minute read** | Best for: Product managers, UX designers, stakeholders
+**15-minute read** | Recommended for: Product managers, UX designers, stakeholders
 
-- All app screens and features
-- What's working vs. in progress
+Contents:
+- Complete list of app screens and features
+- Implementation status (working/in progress/not built)
 - User workflows
-- Missing features
+- Feature gaps
 - Development priorities
 
 ---
 
 ### [03 - Complete Specification](./03-Complete-Specification.md) 🔧
-**Deep dive** | Best for: Developers, detailed wireframing, technical planning
+**Comprehensive reference** | Recommended for: Developers, wireframing, technical planning
 
+Contents:
 - Full screen inventory with file paths
-- Exact data structures (JSON)
+- Exact data structures (JSON format)
 - Detailed user flows
 - API endpoints
 - Complete gap analysis
-- Implementation status
+- Implementation status by component
 
 ---
 
-## 🎯 Quick Guide
+## 🎯 Document Selection Guide
 
-| Your Role | Start Here |
-|-----------|------------|
+| Role | Recommended Document |
+|------|---------------------|
 | Client/Executive | [Quick Overview](./01-Quick-Overview.md) |
-| Designer/PM | [Product Guide](./02-Product-Guide.md) |
+| Designer/Product Manager | [Product Guide](./02-Product-Guide.md) |
 | Developer/Architect | [Complete Specification](./03-Complete-Specification.md) |
 
 ---
 
-## Summary
+## Project Summary
 
-**What it does:** Turn meeting notes into organized, trackable tasks automatically using AI.
+**Purpose:** Automatically extract tasks from meeting transcripts using AI, then manage and track those tasks.
 
-**Status:**
-- ✅ Login system working
-- ✅ Backend ready
-- ⚠️ Dashboard shows example data
-- ❌ Need: upload form, task editing, contacts
+**Current Status:**
+- ✅ User authentication system operational
+- ✅ Backend APIs completed
+- ⚠️ Dashboard interface built (using sample data)
+- ❌ Pending: meeting upload form, task editing, contact management
 
-**Next priority:** Meeting upload form and task editing interface.
+**Development Priorities:**
+1. Meeting upload interface
+2. Task editing functionality
+3. Contact management system
