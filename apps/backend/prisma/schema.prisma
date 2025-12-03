@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User profile linked to Supabase auth user
+// The id matches the auth.users.id from Supabase
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  contacts Contact[]
+  meetings Meeting[]
+  tasks    Task[]
+
+  @@map("users")
+}
+
+// Contacts (people who can be assigned tasks)
+model Contact {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  email     String?
+  role      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedTasks Task[] @relation("assignee")
+
+  @@map("contacts")
+}
+
+// Meetings (transcripts)
+model Meeting {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  title        String
+  transcript   String   @db.Text
+  processed    Boolean  @default(false)
+  processedAt  DateTime? @map("processed_at")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks  Task[]
+
+  @@map("meetings")
+}
+
+// Tasks (action items)
+model Task {
+  id            String   @id @default(uuid())
+  meetingId     String   @map("meeting_id")
+  userId        String   @map("user_id")
+  description   String   @db.Text
+  assigneeId    String?  @map("assignee_id")
+  assigneeName  String?  @map("assignee_name")
+  deadline      DateTime?
+  status        String   @default("pending")
+  priority      String   @default("medium")
+  aiExtracted   Boolean  @default(true) @map("ai_extracted")
+  reviewed      Boolean  @default(false)
+  reviewedAt    DateTime? @map("reviewed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignee Contact? @relation("assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@map("tasks")
+}
