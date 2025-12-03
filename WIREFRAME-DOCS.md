@@ -7,9 +7,8 @@ This folder contains three levels of documentation for the Meeting Task Tool pro
 ## 📄 Available Documents
 
 ### [01 - Quick Overview](./01-Quick-Overview.md) ⚡
-**5-minute read** | Recommended for: Clients, executives, presentations
+**5-minute read**
 
-Contents:
 - Plain English explanation of the app
 - 4 simple steps showing how it works
 - Overview of app screens
@@ -18,9 +17,8 @@ Contents:
 ---
 
 ### [02 - Product Guide](./02-Product-Guide.md) 📋
-**15-minute read** | Recommended for: Product managers, UX designers, stakeholders
+**15-minute read**
 
-Contents:
 - Complete list of app screens and features
 - Implementation status (working/in progress/not built)
 - User workflows
@@ -30,9 +28,8 @@ Contents:
 ---
 
 ### [03 - Complete Specification](./03-Complete-Specification.md) 🔧
-**Comprehensive reference** | Recommended for: Developers, wireframing, technical planning
+**Comprehensive reference**
 
-Contents:
 - Full screen inventory with file paths
 - Exact data structures (JSON format)
 - Detailed user flows
