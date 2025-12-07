@@ -6,7 +6,12 @@ import 'express-async-errors';
 import dotenv from 'dotenv';
 import routes from './routes';
 
+import path from 'path';
+
 // Load environment variables
+// Try to load from root .env if running in monorepo
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+// Also load local .env (overrides root if present, though dotenv default is no-override, but good to have)
 dotenv.config();
 
 const app = express();

@@ -39,12 +39,14 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    SelectGroup,
+    SelectLabel,
 } from '@/components/ui/select';
 import { tasksApi, contactsApi, objectivesApi } from '@/lib/api';
-import { Target } from 'lucide-react';
+import { Target, Folder } from 'lucide-react';
 import { TaskComments, type TaskComment } from '@/components/TaskComments';
 import type { TaskWithRelations, Contact } from '@meeting-task-tool/shared';
-import type { YearlyObjective, QuarterlyObjective } from '@/lib/mockData';
+import { type YearlyObjective, type QuarterlyObjective, type Category, mockCategories } from '@/lib/mockData';
 
 const taskSchema = z.object({
     description: z.string().min(1, 'Description is required'),
@@ -53,12 +55,13 @@ const taskSchema = z.object({
     status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
     quarterlyObjectiveId: z.string().optional().nullable(),
+    categoryId: z.string().optional().nullable(),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 interface TaskEditModalProps {
-    task: (TaskWithRelations & { quarterlyObjectiveId?: string | null; comments?: TaskComment[] }) | null;
+    task: (TaskWithRelations & { quarterlyObjectiveId?: string | null; categoryId?: string | null; comments?: TaskComment[] }) | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
@@ -89,7 +92,7 @@ export function TaskEditModal({
     const [pendingSubmitData, setPendingSubmitData] = useState<TaskFormValues | null>(null);
 
     const form = useForm<TaskFormValues>({
-        resolver: zodResolver(taskSchema),
+        resolver: zodResolver(taskSchema as any),
         defaultValues: {
             description: '',
             assigneeId: null,
@@ -97,6 +100,7 @@ export function TaskEditModal({
             status: 'pending',
             priority: 'medium',
             quarterlyObjectiveId: null,
+            categoryId: null,
         },
     });
 
@@ -105,7 +109,7 @@ export function TaskEditModal({
         const loadContacts = async () => {
             try {
                 const response = await contactsApi.list();
-                setContacts(response.contacts || []);
+                setContacts((response as any).contacts || []);
             } catch (err) {
                 console.error('Failed to load contacts:', err);
             }
@@ -147,8 +151,21 @@ export function TaskEditModal({
                 status: task.status,
                 priority: task.priority,
                 quarterlyObjectiveId: task.quarterlyObjectiveId || null,
+                categoryId: task.categoryId || null,
             });
             setComments(task.comments || []);
+        } else {
+            // Reset to defaults for new task
+            form.reset({
+                description: '',
+                assigneeId: null,
+                deadline: null,
+                status: 'pending',
+                priority: 'medium',
+                quarterlyObjectiveId: null,
+                categoryId: null,
+            });
+            setComments([]);
         }
     }, [task, form]);
 
@@ -185,22 +202,27 @@ export function TaskEditModal({
 
     // Actually perform the submit
     const performSubmit = async (data: TaskFormValues) => {
-        if (!task) return;
-
         setIsSubmitting(true);
         setError(null);
         try {
-            await tasksApi.update(task.id, {
-                ...data,
-                deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
-                reviewed: true,
-            });
+            if (task) {
+                await tasksApi.update(task.id, {
+                    ...data,
+                    deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+                    reviewed: true,
+                });
+            } else {
+                await tasksApi.create({
+                    ...data,
+                    deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+                });
+            }
             setShowDeadlineWarning(false);
             setPendingSubmitData(null);
             onOpenChange(false);
             onSuccess?.();
         } catch (err: any) {
-            setError(err?.error || 'Failed to update task');
+            setError(err?.error || `Failed to ${task ? 'update' : 'create'} task`);
         } finally {
             setIsSubmitting(false);
         }
@@ -219,7 +241,7 @@ export function TaskEditModal({
         setPendingSubmitData(null);
     };
 
-    if (!task) return null;
+
 
     // Group objectives by yearly objective
     const groupedObjectives = objectives.reduce((acc, obj) => {
@@ -236,9 +258,9 @@ export function TaskEditModal({
                 <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
 
                     <DialogHeader>
-                        <DialogTitle>Edit Task</DialogTitle>
+                        <DialogTitle>{task ? 'Edit Task' : 'Create Task'}</DialogTitle>
                         <DialogDescription>
-                            Update task details. Changes will mark the task as reviewed.
+                            {task ? 'Update task details. Changes will mark the task as reviewed.' : 'Add a new task to your list.'}
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -379,10 +401,10 @@ export function TaskEditModal({
                                                     <span className="text-gray-500">No linked objective</span>
                                                 </SelectItem>
                                                 {Object.entries(groupedObjectives).map(([yearlyTitle, quarters]) => (
-                                                    <div key={yearlyTitle}>
-                                                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                                                    <SelectGroup key={yearlyTitle}>
+                                                        <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                                                             {yearlyTitle.length > 40 ? yearlyTitle.slice(0, 40) + '...' : yearlyTitle}
-                                                        </div>
+                                                        </SelectLabel>
                                                         {quarters.map((q) => (
                                                             <SelectItem key={q.id} value={q.id}>
                                                                 <span className="flex items-center gap-2">
@@ -391,7 +413,7 @@ export function TaskEditModal({
                                                                 </span>
                                                             </SelectItem>
                                                         ))}
-                                                    </div>
+                                                    </SelectGroup>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -400,12 +422,49 @@ export function TaskEditModal({
                                 )}
                             />
 
-                            {/* Comments Section */}
-                            <TaskComments
-                                comments={comments}
-                                onAddComment={handleAddComment}
-                                onDeleteComment={handleDeleteComment}
+                            {/* Category Field */}
+                            <FormField
+                                control={form.control}
+                                name="categoryId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center gap-1">
+                                            <Folder className="h-4 w-4 text-yellow-500" />
+                                            Category
+                                        </FormLabel>
+                                        <Select
+                                            onValueChange={(value) => field.onChange(value === 'none' ? null : value)}
+                                            defaultValue={field.value || 'none'}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a category" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="none">
+                                                    <span className="text-gray-500">No category</span>
+                                                </SelectItem>
+                                                {mockCategories.map((category) => (
+                                                    <SelectItem key={category.id} value={category.id}>
+                                                        {category.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
                             />
+
+                            {/* Comments Section - Only show for existing tasks */}
+                            {task && (
+                                <TaskComments
+                                    comments={comments}
+                                    onAddComment={handleAddComment}
+                                    onDeleteComment={handleDeleteComment}
+                                />
+                            )}
 
                             {error && (
                                 <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md">
@@ -422,16 +481,16 @@ export function TaskEditModal({
                                     Cancel
                                 </Button>
                                 <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                                    {isSubmitting ? (task ? 'Saving...' : 'Creating...') : (task ? 'Save Changes' : 'Create Task')}
                                 </Button>
                             </DialogFooter>
                         </form>
                     </Form>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* Deadline Warning Dialog */}
-            <AlertDialog open={showDeadlineWarning} onOpenChange={setShowDeadlineWarning}>
+            < AlertDialog open={showDeadlineWarning} onOpenChange={setShowDeadlineWarning} >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2">
@@ -456,7 +515,7 @@ export function TaskEditModal({
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
-            </AlertDialog>
+            </AlertDialog >
         </>
     );
 }

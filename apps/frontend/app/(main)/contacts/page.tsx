@@ -62,7 +62,7 @@ export default function ContactsPage() {
     const [deletingContact, setDeletingContact] = useState<ContactWithType | null>(null);
 
     const form = useForm<ContactFormValues>({
-        resolver: zodResolver(contactSchema),
+        resolver: zodResolver(contactSchema as any),
         defaultValues: {
             name: '',
             email: '',
@@ -76,7 +76,7 @@ export default function ContactsPage() {
         setError(null);
         try {
             const response = await contactsApi.list();
-            setContacts(response.contacts || []);
+            setContacts((response as any).contacts || []);
         } catch (err: any) {
             setError(err?.error || 'Failed to load contacts');
             setContacts([]);
@@ -148,14 +148,14 @@ export default function ContactsPage() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Contacts</h1>
-                    <p className="text-gray-600 mt-1">Manage people you can assign tasks to</p>
+                    <h1 className="text-3xl font-bold text-foreground">Contacts</h1>
+                    <p className="text-muted-foreground mt-1">Manage people you can assign tasks to</p>
                 </div>
                 <div className="flex items-center space-x-3">
-                    <Button variant="outline" onClick={loadContacts} disabled={isLoading} className="flex items-center space-x-1">
+                    <Button variant="outline" onClick={loadContacts} disabled={isLoading} className="flex items-center space-x-1 border-border text-muted-foreground hover:text-foreground hover:bg-accent">
                         <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         <span>Refresh</span>
                     </Button>
@@ -167,17 +167,17 @@ export default function ContactsPage() {
                         }
                     }}>
                         <DialogTrigger asChild>
-                            <Button className="flex items-center space-x-1" onClick={openCreateModal}>
+                            <Button className="flex items-center space-x-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreateModal}>
                                 <Plus className="h-4 w-4" />
                                 <span>Add Contact</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="bg-card border-border text-card-foreground">
                             <DialogHeader>
                                 <DialogTitle>
                                     {editingContact ? 'Edit Contact' : 'Add New Contact'}
                                 </DialogTitle>
-                                <DialogDescription>
+                                <DialogDescription className="text-muted-foreground">
                                     {editingContact
                                         ? 'Update the contact information below.'
                                         : 'Add a person to assign tasks to them.'}
@@ -192,7 +192,7 @@ export default function ContactsPage() {
                                             <FormItem>
                                                 <FormLabel>Name *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="John Doe" {...field} />
+                                                    <Input placeholder="John Doe" {...field} className="bg-input border-border" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -205,7 +205,7 @@ export default function ContactsPage() {
                                             <FormItem>
                                                 <FormLabel>Email</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="john@example.com" type="email" {...field} />
+                                                    <Input placeholder="john@example.com" type="email" {...field} className="bg-input border-border" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -218,7 +218,7 @@ export default function ContactsPage() {
                                             <FormItem>
                                                 <FormLabel>Role</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Developer, Manager, etc." {...field} />
+                                                    <Input placeholder="Developer, Manager, etc." {...field} className="bg-input border-border" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -237,16 +237,16 @@ export default function ContactsPage() {
                                                         className="flex gap-6"
                                                     >
                                                         <div className="flex items-center space-x-2">
-                                                            <RadioGroupItem value="internal" id="internal" />
-                                                            <Label htmlFor="internal" className="flex items-center gap-1.5 cursor-pointer">
-                                                                <Building2 className="h-4 w-4 text-blue-600" />
+                                                            <RadioGroupItem value="internal" id="internal" className="border-primary text-primary" />
+                                                            <Label htmlFor="internal" className="flex items-center gap-1.5 cursor-pointer text-foreground">
+                                                                <Building2 className="h-4 w-4 text-blue-500" />
                                                                 Internal Team
                                                             </Label>
                                                         </div>
                                                         <div className="flex items-center space-x-2">
-                                                            <RadioGroupItem value="external" id="external" />
-                                                            <Label htmlFor="external" className="flex items-center gap-1.5 cursor-pointer">
-                                                                <Globe className="h-4 w-4 text-purple-600" />
+                                                            <RadioGroupItem value="external" id="external" className="border-primary text-primary" />
+                                                            <Label htmlFor="external" className="flex items-center gap-1.5 cursor-pointer text-foreground">
+                                                                <Globe className="h-4 w-4 text-purple-500" />
                                                                 External Contractor
                                                             </Label>
                                                         </div>
@@ -265,10 +265,11 @@ export default function ContactsPage() {
                                                 setEditingContact(null);
                                             }}
                                             disabled={isSubmitting}
+                                            className="border-border text-muted-foreground hover:text-foreground"
                                         >
                                             Cancel
                                         </Button>
-                                        <Button type="submit" disabled={isSubmitting}>
+                                        <Button type="submit" disabled={isSubmitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
                                             {isSubmitting
                                                 ? (editingContact ? 'Saving...' : 'Adding...')
                                                 : (editingContact ? 'Save Changes' : 'Add Contact')}
@@ -281,7 +282,7 @@ export default function ContactsPage() {
                 </div>
             </div>
 
-            <Card>
+            <Card className="border-none bg-card shadow-sm">
                 <CardHeader>
                     <CardTitle>Your Contacts</CardTitle>
                     <CardDescription>People available for task assignment</CardDescription>
@@ -289,7 +290,7 @@ export default function ContactsPage() {
                 <CardContent>
                     {isLoading ? (
                         <div className="flex items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                         </div>
                     ) : error ? (
                         <div className="text-center py-12">
@@ -299,10 +300,10 @@ export default function ContactsPage() {
                             </Button>
                         </div>
                     ) : contacts.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            <Users className="h-12 w-12 mx-auto text-gray-400" />
+                        <div className="text-center py-12 text-muted-foreground">
+                            <Users className="h-12 w-12 mx-auto text-muted-foreground/50" />
                             <p className="mt-4">No contacts yet. Add someone to get started!</p>
-                            <Button onClick={openCreateModal} className="mt-4">
+                            <Button onClick={openCreateModal} className="mt-4 bg-primary text-primary-foreground">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Add Your First Contact
                             </Button>
@@ -310,32 +311,32 @@ export default function ContactsPage() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {contacts.map((contact) => (
-                                <Card key={contact.id} className={`group relative ${contact.contactType === 'external' ? 'bg-purple-50 border-purple-200' : 'bg-gray-50'}`}>
+                                <Card key={contact.id} className={`group relative border-border transition-colors ${contact.contactType === 'external' ? 'bg-purple-500/5 hover:bg-purple-500/10' : 'bg-card hover:bg-accent/50'}`}>
                                     <CardContent className="pt-6">
                                         <div className="flex items-start space-x-4">
-                                            <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${contact.contactType === 'external' ? 'bg-purple-100' : 'bg-blue-100'}`}>
-                                                <span className={`font-semibold text-lg ${contact.contactType === 'external' ? 'text-purple-600' : 'text-blue-600'}`}>
+                                            <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${contact.contactType === 'external' ? 'bg-purple-500/20' : 'bg-blue-500/20'}`}>
+                                                <span className={`font-semibold text-lg ${contact.contactType === 'external' ? 'text-purple-400' : 'text-blue-400'}`}>
                                                     {contact.name.charAt(0).toUpperCase()}
                                                 </span>
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <h3 className="font-medium text-gray-900 truncate">{contact.name}</h3>
+                                                    <h3 className="font-medium text-foreground truncate">{contact.name}</h3>
                                                     {contact.contactType === 'external' && (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
                                                             <Globe className="h-3 w-3" />
                                                             External
                                                         </span>
                                                     )}
                                                 </div>
                                                 {contact.email && (
-                                                    <div className="flex items-center text-sm text-gray-500 mt-1">
+                                                    <div className="flex items-center text-sm text-muted-foreground mt-1">
                                                         <Mail className="h-3 w-3 mr-1 flex-shrink-0" />
                                                         <span className="truncate">{contact.email}</span>
                                                     </div>
                                                 )}
                                                 {contact.role && (
-                                                    <div className="flex items-center text-sm text-gray-500 mt-1">
+                                                    <div className="flex items-center text-sm text-muted-foreground mt-1">
                                                         <Briefcase className="h-3 w-3 mr-1 flex-shrink-0" />
                                                         <span>{contact.role}</span>
                                                     </div>
@@ -349,13 +350,14 @@ export default function ContactsPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => openEditModal(contact)}
+                                                className="text-muted-foreground hover:text-foreground"
                                             >
                                                 <Edit2 className="h-4 w-4" />
                                             </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
                                                 onClick={() => setDeletingContact(contact)}
                                             >
                                                 <Trash2 className="h-4 w-4" />
@@ -371,19 +373,19 @@ export default function ContactsPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deletingContact} onOpenChange={(open) => !open && setDeletingContact(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-card border-border text-card-foreground">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Contact</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogDescription className="text-muted-foreground">
                             Are you sure you want to delete {deletingContact?.name}? This action cannot be undone.
                             Tasks assigned to this contact will become unassigned.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="border-border text-muted-foreground hover:text-foreground">Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDelete}
-                            className="bg-red-600 hover:bg-red-700"
+                            className="bg-red-600 hover:bg-red-700 text-white"
                         >
                             Delete
                         </AlertDialogAction>

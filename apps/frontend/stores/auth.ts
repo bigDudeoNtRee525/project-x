@@ -49,7 +49,7 @@ export const useAuthStore = create<AuthState>()(
           // Get or create user profile from our backend
           try {
             const response = await authApi.getMe();
-            setUser(response.user);
+            setUser((response as any).user);
           } catch (error) {
             console.error('Failed to get user profile:', error);
             // If backend fails but Supabase auth succeeded,
@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>()(
             setUser({
               id: supabaseUser.id,
               email: supabaseUser.email!,
-              name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || null,
+              name: (supabaseUser.user_metadata as any)?.name || supabaseUser.email?.split('@')[0] || null,
               createdAt: new Date(),
               updatedAt: new Date(),
             });

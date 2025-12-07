@@ -23,6 +23,8 @@ model User {
   contacts Contact[]
   meetings Meeting[]
   tasks    Task[]
+  goals    Goal[]
+  categories Category[]
 
   @@map("users")
 }
@@ -83,6 +85,48 @@ model Task {
   meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   assignee Contact? @relation("assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  goal     Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  categoryId String? @map("category_id")
+  goalId     String? @map("goal_id")
 
   @@map("tasks")
+}
+
+// Goals (Yearly, Quarterly)
+model Goal {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  type      String   // YEARLY, QUARTERLY
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent     Goal?      @relation("GoalHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children   Goal[]     @relation("GoalHierarchy")
+  categories Category[]
+  tasks      Task[]
+
+  @@map("goals")
+}
+
+// Categories (Buckets of work)
+model Category {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  goalId    String?  @map("goal_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal Goal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  tasks Task[]
+
+  @@map("categories")
 }

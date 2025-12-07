@@ -32,10 +32,10 @@ export function BulkActionBar({
 
     return (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-            <div className="bg-gray-900 text-white rounded-xl shadow-2xl px-6 py-4 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-300">
+            <div className="bg-popover text-popover-foreground rounded-xl shadow-2xl px-6 py-4 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-300 border border-border">
                 {/* Selection count */}
-                <div className="flex items-center gap-2 pr-4 border-r border-gray-700">
-                    <div className="bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold">
+                <div className="flex items-center gap-2 pr-4 border-r border-border">
+                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold">
                         {selectedCount}
                     </div>
                     <span className="text-sm font-medium">selected</span>
@@ -43,9 +43,9 @@ export function BulkActionBar({
 
                 {/* Status dropdown */}
                 <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-gray-400" />
+                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
                     <Select onValueChange={onUpdateStatus}>
-                        <SelectTrigger className="w-[130px] bg-gray-800 border-gray-700 text-white text-sm h-9">
+                        <SelectTrigger className="w-[130px] bg-muted border-input text-foreground text-sm h-9">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -59,9 +59,9 @@ export function BulkActionBar({
 
                 {/* Priority dropdown */}
                 <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-gray-400" />
+                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
                     <Select onValueChange={onUpdatePriority}>
-                        <SelectTrigger className="w-[120px] bg-gray-800 border-gray-700 text-white text-sm h-9">
+                        <SelectTrigger className="w-[120px] bg-muted border-input text-foreground text-sm h-9">
                             <SelectValue placeholder="Priority" />
                         </SelectTrigger>
                         <SelectContent>
@@ -75,9 +75,9 @@ export function BulkActionBar({
 
                 {/* Assignee dropdown */}
                 <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-400" />
+                    <User className="h-4 w-4 text-muted-foreground" />
                     <Select onValueChange={(value) => onUpdateAssignee(value === 'unassigned' ? null : value)}>
-                        <SelectTrigger className="w-[140px] bg-gray-800 border-gray-700 text-white text-sm h-9">
+                        <SelectTrigger className="w-[140px] bg-muted border-input text-foreground text-sm h-9">
                             <SelectValue placeholder="Assign to" />
                         </SelectTrigger>
                         <SelectContent>
@@ -96,7 +96,7 @@ export function BulkActionBar({
                     variant="ghost"
                     size="sm"
                     onClick={onClearSelection}
-                    className="text-gray-400 hover:text-white hover:bg-gray-800 ml-2"
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted ml-2"
                 >
                     <X className="h-4 w-4 mr-1" />
                     Clear
@@ -105,3 +105,4 @@ export function BulkActionBar({
         </div>
     );
 }
+

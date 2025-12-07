@@ -108,7 +108,7 @@ export function ObjectiveFormModal({
     const isEditing = !!objective;
 
     const form = useForm<FormValues>({
-        resolver: zodResolver(yearlyObjectiveSchema),
+        resolver: zodResolver(yearlyObjectiveSchema as any),
         defaultValues: {
             title: '',
             description: '',
@@ -345,7 +345,7 @@ export function ObjectiveFormModal({
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Year</FormLabel>
-                                            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value.toString()}>
+                                            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={(field.value || new Date().getFullYear()).toString()}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue />

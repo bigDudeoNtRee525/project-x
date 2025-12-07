@@ -7,26 +7,26 @@ interface GanttChartProps {
     tasks: TaskWithRelations[];
 }
 
-// Status colors with gradient support
+// Status colors with gradient support - using Opus theme variables
 const statusStyles: Record<string, { bg: string; gradient: string; text: string }> = {
     pending: {
-        bg: 'bg-amber-500',
-        gradient: 'from-amber-400 to-amber-600',
+        bg: 'bg-[var(--chart-1)]',
+        gradient: 'from-[var(--chart-1)] to-[oklch(from_var(--chart-1)_l_c_h_/_0.8)]',
         text: 'Pending',
     },
     in_progress: {
-        bg: 'bg-blue-500',
-        gradient: 'from-blue-400 to-blue-600',
+        bg: 'bg-[var(--chart-3)]',
+        gradient: 'from-[var(--chart-3)] to-[oklch(from_var(--chart-3)_l_c_h_/_0.8)]',
         text: 'In Progress',
     },
     completed: {
-        bg: 'bg-emerald-500',
-        gradient: 'from-emerald-400 to-emerald-600',
+        bg: 'bg-[var(--chart-2)]',
+        gradient: 'from-[var(--chart-2)] to-[oklch(from_var(--chart-2)_l_c_h_/_0.8)]',
         text: 'Completed',
     },
     cancelled: {
-        bg: 'bg-slate-400',
-        gradient: 'from-slate-300 to-slate-500',
+        bg: 'bg-muted-foreground',
+        gradient: 'from-muted-foreground to-muted',
         text: 'Cancelled',
     },
 };
@@ -35,8 +35,8 @@ const statusStyles: Record<string, { bg: string; gradient: string; text: string 
 const priorityStyles: Record<string, { ring: string; dot: string; label: string }> = {
     urgent: { ring: 'ring-red-500', dot: 'bg-red-500', label: 'Urgent' },
     high: { ring: 'ring-orange-500', dot: 'bg-orange-500', label: 'High' },
-    medium: { ring: 'ring-blue-500', dot: 'bg-blue-500', label: 'Medium' },
-    low: { ring: 'ring-slate-400', dot: 'bg-slate-400', label: 'Low' },
+    medium: { ring: 'ring-yellow-500', dot: 'bg-yellow-500', label: 'Medium' },
+    low: { ring: 'ring-green-500', dot: 'bg-green-500', label: 'Low' },
 };
 
 type ViewMode = 'week' | 'month' | 'quarter';
@@ -156,35 +156,35 @@ export function GanttChart({ tasks }: GanttChartProps) {
 
     if (tasksWithDeadlines.length === 0) {
         return (
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200">
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+            <div className="relative overflow-hidden rounded-2xl bg-card border border-border">
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:24px_24px] opacity-10" />
                 <div className="relative h-72 flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center mb-4 shadow-lg">
-                        <svg className="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4 shadow-lg">
+                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-700 mb-1">No Tasks with Deadlines</h3>
-                    <p className="text-sm text-slate-500">Add deadlines to your tasks to visualize them on the timeline</p>
+                    <h3 className="text-lg font-semibold text-card-foreground mb-1">No Tasks with Deadlines</h3>
+                    <p className="text-sm text-muted-foreground">Add deadlines to your tasks to visualize them on the timeline</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
             {/* View Mode Selector */}
-            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+            <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-600">View:</span>
-                    <div className="flex rounded-lg bg-slate-100 p-0.5">
+                    <span className="text-sm font-medium text-muted-foreground">View:</span>
+                    <div className="flex rounded-lg bg-muted p-0.5">
                         {(['week', 'month', 'quarter'] as ViewMode[]).map((mode) => (
                             <button
                                 key={mode}
                                 onClick={() => setViewMode(mode)}
                                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${viewMode === mode
-                                    ? 'bg-white text-slate-900 shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                    ? 'bg-card text-card-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-card-foreground'
                                     }`}
                             >
                                 {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -192,7 +192,7 @@ export function GanttChart({ tasks }: GanttChartProps) {
                         ))}
                     </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                         Today
@@ -202,8 +202,8 @@ export function GanttChart({ tasks }: GanttChartProps) {
             </div>
 
             {/* Timeline Header */}
-            <div className="flex border-b border-slate-100 bg-slate-50/50">
-                <div className="w-72 shrink-0 px-4 py-2 font-medium text-xs text-slate-500 uppercase tracking-wider border-r border-slate-100">
+            <div className="flex border-b border-border bg-muted/10">
+                <div className="w-72 shrink-0 px-4 py-2 font-medium text-xs text-muted-foreground uppercase tracking-wider border-r border-border">
                     Task Details
                 </div>
                 <div className="flex-1 relative overflow-x-auto">
@@ -211,11 +211,11 @@ export function GanttChart({ tasks }: GanttChartProps) {
                         {timeUnits.map((unit, idx) => (
                             <div
                                 key={idx}
-                                className="flex-1 min-w-[80px] px-2 py-2 text-center border-r border-slate-100 last:border-r-0"
+                                className="flex-1 min-w-[80px] px-2 py-2 text-center border-r border-border last:border-r-0"
                             >
-                                <div className="text-xs font-medium text-slate-700">{unit.label}</div>
+                                <div className="text-xs font-medium text-card-foreground">{unit.label}</div>
                                 {unit.subLabel && (
-                                    <div className="text-[10px] text-slate-400">{unit.subLabel}</div>
+                                    <div className="text-[10px] text-muted-foreground">{unit.subLabel}</div>
                                 )}
                             </div>
                         ))}
@@ -234,33 +234,33 @@ export function GanttChart({ tasks }: GanttChartProps) {
                     return (
                         <div
                             key={task.id}
-                            className={`flex border-b border-slate-50 last:border-b-0 transition-colors duration-150 ${isHovered ? 'bg-slate-50' : index % 2 === 0 ? 'bg-white' : 'bg-slate-25'
+                            className={`flex border-b border-border last:border-b-0 transition-colors duration-150 ${isHovered ? 'bg-muted/50' : index % 2 === 0 ? 'bg-card' : 'bg-muted/10'
                                 }`}
                             onMouseEnter={() => setHoveredTask(task.id)}
                             onMouseLeave={() => setHoveredTask(null)}
                         >
                             {/* Task Info Column */}
-                            <div className="w-72 shrink-0 p-4 border-r border-slate-100">
+                            <div className="w-72 shrink-0 p-4 border-r border-border">
                                 <div className="flex items-start gap-3">
                                     {/* Priority indicator */}
                                     <div className={`mt-1 w-2 h-2 rounded-full ${priority.dot} shrink-0`} />
                                     <div className="min-w-0 flex-1">
-                                        <h4 className="text-sm font-medium text-slate-800 truncate leading-tight">
+                                        <h4 className="text-sm font-medium text-card-foreground truncate leading-tight">
                                             {task.description}
                                         </h4>
                                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                                task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                                                    task.status === 'cancelled' ? 'bg-slate-100 text-slate-600' :
-                                                        'bg-amber-100 text-amber-700'
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${task.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                                                task.status === 'in_progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                    task.status === 'cancelled' ? 'bg-muted text-muted-foreground border-border' :
+                                                        'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
                                                 }`}>
                                                 {status.text}
                                             </span>
-                                            <span className="text-[10px] text-slate-400">
+                                            <span className="text-[10px] text-muted-foreground">
                                                 {task.assigneeName || 'Unassigned'}
                                             </span>
                                         </div>
-                                        <div className="mt-1 text-[10px] text-slate-400">
+                                        <div className="mt-1 text-[10px] text-muted-foreground">
                                             Due: {new Date(task.deadline!).toLocaleDateString('en-US', {
                                                 month: 'short',
                                                 day: 'numeric',
@@ -278,7 +278,7 @@ export function GanttChart({ tasks }: GanttChartProps) {
                                     {timeUnits.map((_, idx) => (
                                         <div
                                             key={idx}
-                                            className="flex-1 border-r border-slate-50 last:border-r-0"
+                                            className="flex-1 border-r border-border last:border-r-0"
                                             style={{ minWidth: '80px' }}
                                         />
                                     ))}
@@ -287,7 +287,7 @@ export function GanttChart({ tasks }: GanttChartProps) {
                                 {/* Today marker */}
                                 {todayPosition !== null && (
                                     <div
-                                        className="absolute top-0 bottom-0 w-0.5 bg-gradient-to-b from-red-500 via-red-500 to-red-300 z-10"
+                                        className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
                                         style={{ left: `${todayPosition}%` }}
                                     >
                                         <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
@@ -296,7 +296,7 @@ export function GanttChart({ tasks }: GanttChartProps) {
 
                                 {/* Task bar */}
                                 <div
-                                    className={`absolute top-1/2 -translate-y-1/2 h-8 rounded-lg bg-gradient-to-r ${status.gradient} shadow-md transition-all duration-200 cursor-pointer group ${isHovered ? 'ring-2 ring-offset-1 ' + priority.ring + ' scale-[1.02]' : ''
+                                    className={`absolute top-1/2 -translate-y-1/2 h-8 rounded-lg bg-gradient-to-r ${status.gradient} shadow-md transition-all duration-200 cursor-pointer group ${isHovered ? 'ring-2 ring-offset-1 ring-offset-card ' + priority.ring + ' scale-[1.02]' : ''
                                         }`}
                                     style={{
                                         left: `${position.left}%`,
@@ -330,9 +330,9 @@ export function GanttChart({ tasks }: GanttChartProps) {
                                     </div>
 
                                     {/* Tooltip on hover */}
-                                    <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20`}>
+                                    <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-popover text-popover-foreground text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20 border border-border`}>
                                         <div className="font-medium">{task.description}</div>
-                                        <div className="text-slate-300 mt-1">
+                                        <div className="text-muted-foreground mt-1">
                                             {new Date(task.deadline!).toLocaleDateString('en-US', {
                                                 weekday: 'long',
                                                 month: 'long',
@@ -340,10 +340,10 @@ export function GanttChart({ tasks }: GanttChartProps) {
                                                 year: 'numeric'
                                             })}
                                         </div>
-                                        <div className="text-slate-400 text-[10px] mt-0.5">
+                                        <div className="text-muted-foreground text-[10px] mt-0.5">
                                             {priority.label} Priority • {status.text}
                                         </div>
-                                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />
+                                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-popover rotate-45 border-r border-b border-border" />
                                     </div>
                                 </div>
                             </div>
@@ -353,25 +353,25 @@ export function GanttChart({ tasks }: GanttChartProps) {
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 bg-gradient-to-r from-slate-50 to-white border-t border-slate-100">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 bg-muted/30 border-t border-border">
                 <div className="flex items-center gap-4">
-                    <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">Status</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Status</span>
                     <div className="flex items-center gap-3">
                         {Object.entries(statusStyles).map(([key, style]) => (
                             <span key={key} className="flex items-center gap-1.5">
                                 <span className={`w-3 h-3 rounded-md ${style.bg}`} />
-                                <span className="text-xs text-slate-600">{style.text}</span>
+                                <span className="text-xs text-muted-foreground">{style.text}</span>
                             </span>
                         ))}
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">Priority</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Priority</span>
                     <div className="flex items-center gap-3">
                         {Object.entries(priorityStyles).map(([key, style]) => (
                             <span key={key} className="flex items-center gap-1.5">
                                 <span className={`w-2 h-2 rounded-full ${style.dot}`} />
-                                <span className="text-xs text-slate-600">{style.label}</span>
+                                <span className="text-xs text-muted-foreground">{style.label}</span>
                             </span>
                         ))}
                     </div>

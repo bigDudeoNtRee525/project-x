@@ -262,7 +262,20 @@ export interface TaskComment {
     createdAt: Date;
 }
 
-export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; comments?: TaskComment[] })[] = [
+export interface Category {
+    id: string;
+    name: string;
+    quarterlyObjectiveId: string;
+}
+
+export const mockCategories: Category[] = [
+    { id: 'cat-1', name: 'Marketing Campaigns', quarterlyObjectiveId: 'q1-1' },
+    { id: 'cat-2', name: 'Product Development', quarterlyObjectiveId: 'q1-2' },
+    { id: 'cat-3', name: 'Customer Support', quarterlyObjectiveId: 'q1-3' },
+    { id: 'cat-4', name: 'Sales Enablement', quarterlyObjectiveId: 'q2-2' },
+];
+
+export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; categoryId?: string; comments?: TaskComment[] })[] = [
     // Tasks from Meeting 1: Q4 Product Planning
     {
         id: 'task-1',

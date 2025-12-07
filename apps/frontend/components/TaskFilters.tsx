@@ -34,8 +34,8 @@ export function TaskFilters({
         filters.assigneeId !== 'all';
 
     return (
-        <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50 rounded-lg border">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        <div className="flex flex-wrap items-center gap-3 p-4 bg-card rounded-lg border border-border shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Filter className="h-4 w-4" />
                 <span>Filters:</span>
             </div>
@@ -45,7 +45,7 @@ export function TaskFilters({
                 value={filters.status}
                 onValueChange={(value) => onFilterChange('status', value)}
             >
-                <SelectTrigger className="w-[140px] bg-white">
+                <SelectTrigger className="w-[140px] bg-background border-input">
                     <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -62,7 +62,7 @@ export function TaskFilters({
                 value={filters.priority}
                 onValueChange={(value) => onFilterChange('priority', value)}
             >
-                <SelectTrigger className="w-[140px] bg-white">
+                <SelectTrigger className="w-[140px] bg-background border-input">
                     <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
@@ -79,7 +79,7 @@ export function TaskFilters({
                 value={filters.assigneeId}
                 onValueChange={(value) => onFilterChange('assigneeId', value)}
             >
-                <SelectTrigger className="w-[160px] bg-white">
+                <SelectTrigger className="w-[160px] bg-background border-input">
                     <SelectValue placeholder="Assignee" />
                 </SelectTrigger>
                 <SelectContent>
@@ -99,7 +99,7 @@ export function TaskFilters({
                     variant="ghost"
                     size="sm"
                     onClick={onClearFilters}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted"
                 >
                     <X className="h-4 w-4 mr-1" />
                     Clear

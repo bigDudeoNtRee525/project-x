@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, Users, CheckCircle2, Clock, BarChart3 } from 'lucide-react';
+import { TrendingUp, Users, CheckCircle2, Clock, BarChart3 } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { TaskWithRelations } from '@meeting-task-tool/shared';
 
 interface AnalyticsPanelProps {
@@ -16,26 +17,10 @@ function getWeekNumber(date: Date): number {
     return Math.ceil((days + startOfYear.getDay() + 1) / 7);
 }
 
-// Status colors matching the existing design
-const statusColors = {
-    completed: '#22c55e',
-    in_progress: '#3b82f6',
-    pending: '#eab308',
-    cancelled: '#6b7280',
-};
-
-const priorityColors = {
-    urgent: '#dc2626',
-    high: '#f97316',
-    medium: '#eab308',
-    low: '#22c55e',
-};
-
 export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
     // Calculate analytics data
     const analytics = useMemo(() => {
         const now = new Date();
-        const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
 
         // Define accumulator interface for type safety
         interface AnalyticsAccumulator {
@@ -122,16 +107,13 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
             stat.onTimeRate = stat.completed > 0 ? Math.round((stat.onTime / stat.completed) * 100) : 0;
         });
 
-        // Calculate Weekly Data (requires separate pass or complex logic, keeping separate for readability but optimized)
+        // Calculate Weekly Data
         const weeklyData: { week: string; completed: number; created: number }[] = [];
         for (let i = 3; i >= 0; i--) {
             const weekStart = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
             const weekEnd = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
             const weekNum = getWeekNumber(weekEnd);
 
-            // Optimized filter: reduce over tasks is O(N) per week. 
-            // Better: Single pass to bucketize tasks by week if N is large. 
-            // For now, this loop (4 * N) is acceptable and readable.
             const weekStats = tasks.reduce((wAcc, t) => {
                 if (t.status === 'completed' && t.updatedAt) {
                     const updated = new Date(t.updatedAt);
@@ -157,8 +139,50 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
             ? Math.round((stats.onTimeTasks / stats.completedWithDeadlineCount) * 100)
             : 100;
 
-        // Mock average completion time
-        const avgCompletionDays = 4.2;
+        // Calculate Average Completion Time
+        let totalCompletionTimeMs = 0;
+        let completedCountForTime = 0;
+
+        tasks.forEach(task => {
+            if (task.status === 'completed' && task.updatedAt) {
+                const created = new Date(task.createdAt);
+                const completed = new Date(task.updatedAt);
+                const diff = completed.getTime() - created.getTime();
+                if (diff >= 0) {
+                    totalCompletionTimeMs += diff;
+                    completedCountForTime++;
+                }
+            }
+        });
+
+        const avgCompletionDays = completedCountForTime > 0
+            ? Math.round((totalCompletionTimeMs / completedCountForTime / (1000 * 60 * 60 * 24)) * 10) / 10
+            : 0;
+
+        // Calculate Completion Rate Trend (Last 30 days vs Previous 30 days)
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+        const thirtyDaysAgo = new Date(now.getTime() - thirtyDaysMs);
+        const sixtyDaysAgo = new Date(now.getTime() - (2 * thirtyDaysMs));
+
+        let currentPeriodTotal = 0;
+        let currentPeriodCompleted = 0;
+        let prevPeriodTotal = 0;
+        let prevPeriodCompleted = 0;
+
+        tasks.forEach(task => {
+            const created = new Date(task.createdAt);
+            if (created >= thirtyDaysAgo) {
+                currentPeriodTotal++;
+                if (task.status === 'completed') currentPeriodCompleted++;
+            } else if (created >= sixtyDaysAgo) {
+                prevPeriodTotal++;
+                if (task.status === 'completed') prevPeriodCompleted++;
+            }
+        });
+
+        const currentRate = currentPeriodTotal > 0 ? (currentPeriodCompleted / currentPeriodTotal) * 100 : 0;
+        const prevRate = prevPeriodTotal > 0 ? (prevPeriodCompleted / prevPeriodTotal) * 100 : 0;
+        const completionRateTrend = Math.round(currentRate - prevRate);
 
         return {
             statusCounts: stats.statusCounts,
@@ -173,6 +197,7 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
             onTimeTasks: stats.onTimeTasks,
             lateTasks,
             onTimeRate,
+            completionRateTrend,
         };
     }, [tasks]);
 
@@ -186,68 +211,68 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
         <div className="space-y-6">
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
+                <Card className="border-none bg-card shadow-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4" />
                             Completion Rate
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-green-600">{analytics.completionRate}%</span>
-                            <span className="text-sm text-gray-500 flex items-center gap-1">
-                                <TrendingUp className="h-3 w-3 text-green-500" />
-                                +5%
+                            <span className="text-3xl font-bold text-green-500">{analytics.completionRate}%</span>
+                            <span className={`text-sm flex items-center gap-1 ${analytics.completionRateTrend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                <TrendingUp className={`h-3 w-3 ${analytics.completionRateTrend >= 0 ? '' : 'rotate-180'}`} />
+                                {analytics.completionRateTrend > 0 ? '+' : ''}{analytics.completionRateTrend}%
                             </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{analytics.completedTasks} of {analytics.totalTasks} tasks</p>
+                        <p className="text-xs text-muted-foreground mt-1">{analytics.completedTasks} of {analytics.totalTasks} tasks</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="border-none bg-card shadow-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                             <Clock className="h-4 w-4" />
                             Avg. Completion Time
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold">{analytics.avgCompletionDays}</span>
-                            <span className="text-lg text-gray-500">days</span>
+                            <span className="text-3xl font-bold text-card-foreground">{analytics.avgCompletionDays}</span>
+                            <span className="text-lg text-muted-foreground">days</span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">From creation to done</p>
+                        <p className="text-xs text-muted-foreground mt-1">From creation to done</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="border-none bg-card shadow-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                             <Users className="h-4 w-4" />
                             Active Assignees
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-blue-600">
+                        <div className="text-3xl font-bold text-blue-500">
                             {Object.keys(analytics.assigneeCounts).filter(k => k !== 'Unassigned').length}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Team members with tasks</p>
+                        <p className="text-xs text-muted-foreground mt-1">Team members with tasks</p>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="border-none bg-card shadow-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                             <BarChart3 className="h-4 w-4" />
                             In Progress
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-orange-600">
+                        <div className="text-3xl font-bold text-orange-500">
                             {analytics.statusCounts.in_progress || 0}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Tasks being worked on</p>
+                        <p className="text-xs text-muted-foreground mt-1">Tasks being worked on</p>
                     </CardContent>
                 </Card>
             </div>
@@ -255,51 +280,76 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Weekly Activity Chart */}
-                <Card>
+                <Card className="border-none bg-card shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-lg">Weekly Activity</CardTitle>
-                        <CardDescription>Tasks created vs completed over the last 4 weeks</CardDescription>
+                        <CardTitle className="text-lg text-card-foreground">Weekly Activity</CardTitle>
+                        <CardDescription className="text-muted-foreground">Tasks created vs completed over the last 4 weeks</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-48 flex items-end justify-around gap-4">
-                            {analytics.weeklyData.map((week, i) => (
-                                <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                                    <div className="w-full flex gap-1 items-end justify-center h-36">
-                                        {/* Created bar */}
-                                        <div
-                                            className="w-5 bg-blue-200 rounded-t transition-all duration-500"
-                                            style={{ height: `${(week.created / maxWeeklyCount) * 100}%`, minHeight: week.created > 0 ? '8px' : '0' }}
-                                            title={`Created: ${week.created}`}
-                                        />
-                                        {/* Completed bar */}
-                                        <div
-                                            className="w-5 bg-green-500 rounded-t transition-all duration-500"
-                                            style={{ height: `${(week.completed / maxWeeklyCount) * 100}%`, minHeight: week.completed > 0 ? '8px' : '0' }}
-                                            title={`Completed: ${week.completed}`}
-                                        />
-                                    </div>
-                                    <span className="text-xs text-gray-500 font-medium">{week.week}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex justify-center gap-6 mt-4 text-sm">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-blue-200 rounded" />
-                                <span className="text-gray-600">Created</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-green-500 rounded" />
-                                <span className="text-gray-600">Completed</span>
-                            </div>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={analytics.weeklyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorCreated" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                    <XAxis
+                                        dataKey="week"
+                                        stroke="#888888"
+                                        fontSize={12}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <YAxis
+                                        stroke="#888888"
+                                        fontSize={12}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickFormatter={(value: number) => `${value}`}
+                                        allowDecimals={false}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '6px' }}
+                                        itemStyle={{ color: 'var(--card-foreground)' }}
+                                        labelStyle={{ color: 'var(--muted-foreground)' }}
+                                    />
+                                    <Legend />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="created"
+                                        name="Created"
+                                        stroke="#3b82f6"
+                                        fillOpacity={1}
+                                        fill="url(#colorCreated)"
+                                        strokeWidth={2}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="completed"
+                                        name="Completed"
+                                        stroke="#22c55e"
+                                        fillOpacity={1}
+                                        fill="url(#colorCompleted)"
+                                        strokeWidth={2}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Status Breakdown Donut */}
-                <Card>
+                <Card className="border-none bg-card shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-lg">Status Breakdown</CardTitle>
-                        <CardDescription>Distribution of tasks by current status</CardDescription>
+                        <CardTitle className="text-lg text-card-foreground">Status Breakdown</CardTitle>
+                        <CardDescription className="text-muted-foreground">Distribution of tasks by current status</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center justify-center gap-8">
@@ -310,6 +360,12 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
                                         const total = Object.values(analytics.statusCounts).reduce((a, b) => a + b, 0) || 1;
                                         let startAngle = -90;
                                         const statuses = ['completed', 'in_progress', 'pending', 'cancelled'];
+                                        const colors: Record<string, string> = {
+                                            completed: 'var(--chart-2)', // Green
+                                            in_progress: 'var(--chart-3)', // Blue
+                                            pending: 'var(--chart-1)', // Gold
+                                            cancelled: 'var(--muted-foreground)', // Gray
+                                        };
 
                                         return statuses.map((status) => {
                                             const count = analytics.statusCounts[status] || 0;
@@ -330,34 +386,33 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
                                                 <path
                                                     key={status}
                                                     d={path}
-                                                    fill={statusColors[status as keyof typeof statusColors]}
-                                                    className="transition-all duration-500"
+                                                    fill={colors[status]}
+                                                    className="transition-all duration-500 hover:opacity-80"
                                                 />
                                             ) : null;
                                         });
                                     })()}
-                                    <circle cx="70" cy="70" r="30" fill="white" />
+                                    <circle cx="70" cy="70" r="30" fill="var(--card)" />
                                 </svg>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-xl font-bold">{analytics.totalTasks}</span>
+                                    <span className="text-xl font-bold text-card-foreground">{analytics.totalTasks}</span>
                                 </div>
                             </div>
 
                             {/* Legend */}
                             <div className="space-y-2">
                                 {[
-                                    { key: 'completed', label: 'Completed' },
-                                    { key: 'in_progress', label: 'In Progress' },
-                                    { key: 'pending', label: 'Pending' },
-                                    { key: 'cancelled', label: 'Cancelled' },
-                                ].map(({ key, label }) => (
+                                    { key: 'completed', label: 'Completed', color: 'bg-[var(--chart-2)]' },
+                                    { key: 'in_progress', label: 'In Progress', color: 'bg-[var(--chart-3)]' },
+                                    { key: 'pending', label: 'Pending', color: 'bg-[var(--chart-1)]' },
+                                    { key: 'cancelled', label: 'Cancelled', color: 'bg-muted-foreground' },
+                                ].map(({ key, label, color }) => (
                                     <div key={key} className="flex items-center gap-2 text-sm">
                                         <div
-                                            className="w-3 h-3 rounded-full"
-                                            style={{ backgroundColor: statusColors[key as keyof typeof statusColors] }}
+                                            className={`w-3 h-3 rounded-full ${color}`}
                                         />
-                                        <span className="text-gray-600">{label}</span>
-                                        <span className="font-medium ml-auto">{analytics.statusCounts[key] || 0}</span>
+                                        <span className="text-muted-foreground">{label}</span>
+                                        <span className="font-medium ml-auto text-card-foreground">{analytics.statusCounts[key] || 0}</span>
                                     </div>
                                 ))}
                             </div>
@@ -367,10 +422,10 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
             </div>
 
             {/* Assignee Workload */}
-            <Card>
+            <Card className="border-none bg-card shadow-sm">
                 <CardHeader>
-                    <CardTitle className="text-lg">Workload by Assignee</CardTitle>
-                    <CardDescription>Task distribution across team members</CardDescription>
+                    <CardTitle className="text-lg text-card-foreground">Workload by Assignee</CardTitle>
+                    <CardDescription className="text-muted-foreground">Task distribution across team members</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-3">
@@ -379,8 +434,8 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
                             .slice(0, 8)
                             .map(([name, count]) => (
                                 <div key={name} className="flex items-center gap-3">
-                                    <div className="w-32 text-sm font-medium text-gray-700 truncate">{name}</div>
-                                    <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
+                                    <div className="w-32 text-sm font-medium text-card-foreground truncate">{name}</div>
+                                    <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
                                             style={{ width: `${(count / maxAssigneeCount) * 100}%`, minWidth: '32px' }}
@@ -395,126 +450,33 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
             </Card>
 
             {/* Priority Distribution */}
-            <Card>
+            <Card className="border-none bg-card shadow-sm">
                 <CardHeader>
-                    <CardTitle className="text-lg">Priority Distribution</CardTitle>
-                    <CardDescription>Tasks grouped by priority level</CardDescription>
+                    <CardTitle className="text-lg text-card-foreground">Priority Distribution</CardTitle>
+                    <CardDescription className="text-muted-foreground">Tasks grouped by priority level</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex gap-4">
                         {[
-                            { key: 'urgent', label: 'Urgent' },
-                            { key: 'high', label: 'High' },
-                            { key: 'medium', label: 'Medium' },
-                            { key: 'low', label: 'Low' },
-                        ].map(({ key, label }) => {
+                            { key: 'urgent', label: 'Urgent', color: 'bg-red-500' },
+                            { key: 'high', label: 'High', color: 'bg-orange-500' },
+                            { key: 'medium', label: 'Medium', color: 'bg-yellow-500' },
+                            { key: 'low', label: 'Low', color: 'bg-green-500' },
+                        ].map(({ key, label, color }) => {
                             const count = analytics.priorityCounts[key] || 0;
                             const percentage = analytics.totalTasks > 0 ? Math.round((count / analytics.totalTasks) * 100) : 0;
                             return (
                                 <div key={key} className="flex-1 text-center">
                                     <div
-                                        className="mx-auto w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-lg mb-2"
-                                        style={{ backgroundColor: priorityColors[key as keyof typeof priorityColors] }}
+                                        className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-lg mb-2 ${color}`}
                                     >
                                         {count}
                                     </div>
-                                    <div className="text-sm font-medium text-gray-700">{label}</div>
-                                    <div className="text-xs text-gray-500">{percentage}%</div>
+                                    <div className="text-sm font-medium text-card-foreground">{label}</div>
+                                    <div className="text-xs text-muted-foreground">{percentage}%</div>
                                 </div>
                             );
                         })}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Performance by Assignee */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">Performance by Assignee</CardTitle>
-                    <CardDescription>Individual completion rates and on-time delivery</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        {Object.entries(analytics.personStats)
-                            .filter(([name]) => name !== 'Unassigned')
-                            .sort(([, a], [, b]) => (b as { total: number }).total - (a as { total: number }).total)
-                            .slice(0, 6)
-                            .map(([name, stats]) => {
-                                const typedStats = stats as { total: number; completed: number; onTime: number; late: number; completionRate: number; onTimeRate: number };
-                                return (
-                                    <div key={name} className="p-4 bg-gray-50 rounded-lg">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                                                    {name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-medium text-gray-900">{name}</h4>
-                                                    <p className="text-xs text-gray-500">{typedStats.total} tasks assigned</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-lg font-bold ${typedStats.completionRate >= 70 ? 'text-green-600' : typedStats.completionRate >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                                        {typedStats.completionRate}%
-                                                    </span>
-                                                    <span className="text-sm text-gray-500">completed</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Completion progress bar */}
-                                        <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
-                                            <div
-                                                className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-500"
-                                                style={{ width: `${typedStats.completionRate}%` }}
-                                            />
-                                        </div>
-
-                                        {/* Stats row */}
-                                        <div className="flex justify-between text-xs">
-                                            <div className="flex items-center gap-4">
-                                                <span className="flex items-center gap-1">
-                                                    <CheckCircle2 className="h-3 w-3 text-green-500" />
-                                                    {typedStats.completed} done
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Clock className="h-3 w-3 text-blue-500" />
-                                                    {typedStats.total - typedStats.completed} pending
-                                                </span>
-                                            </div>
-                                            {typedStats.completed > 0 && (
-                                                <span className={`flex items-center gap-1 font-medium ${typedStats.onTimeRate >= 80 ? 'text-green-600' : typedStats.onTimeRate >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                                    {typedStats.onTimeRate}% on-time
-                                                    {typedStats.late > 0 && (
-                                                        <span className="text-red-500 ml-1">({typedStats.late} late)</span>
-                                                    )}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                )
-                            })}
-
-                        {Object.keys(analytics.personStats).filter(n => n !== 'Unassigned').length === 0 && (
-                            <p className="text-gray-500 text-center py-4">No assignee data available</p>
-                        )}
-                    </div>
-
-                    {/* Summary row */}
-                    <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-3 gap-4 text-center">
-                        <div>
-                            <div className="text-2xl font-bold text-green-600">{analytics.onTimeTasks}</div>
-                            <div className="text-xs text-gray-500">On-time completions</div>
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold text-red-600">{analytics.lateTasks}</div>
-                            <div className="text-xs text-gray-500">Late completions</div>
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold text-blue-600">{analytics.onTimeRate}%</div>
-                            <div className="text-xs text-gray-500">Overall on-time rate</div>
-                        </div>
                     </div>
                 </CardContent>
             </Card>

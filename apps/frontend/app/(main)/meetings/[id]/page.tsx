@@ -54,7 +54,7 @@ export default function MeetingDetailPage() {
         setError(null);
         try {
             const response = await meetingsApi.get(meetingId);
-            setMeeting(response.meeting);
+            setMeeting((response as any).meeting);
         } catch (err: any) {
             setError(err?.error || 'Failed to load meeting');
         } finally {
@@ -152,6 +152,21 @@ export default function MeetingDetailPage() {
                         <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
+                    {meeting.tasks.some(t => !t.reviewed) && (
+                        <Button onClick={async () => {
+                            if (!confirm('Are you sure you want to confirm all tasks? They will appear in your main task list.')) return;
+                            try {
+                                await meetingsApi.confirmTasks(meetingId);
+                                loadMeeting();
+                            } catch (err) {
+                                console.error('Failed to confirm tasks:', err);
+                                alert('Failed to confirm tasks');
+                            }
+                        }} className="bg-green-600 hover:bg-green-700 text-white">
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Confirm Tasks
+                        </Button>
+                    )}
                     <Button onClick={handleReprocess} disabled={isReprocessing}>
                         <FileText className={`h-4 w-4 mr-1 ${isReprocessing ? 'animate-pulse' : ''}`} />
                         {isReprocessing ? 'Processing...' : 'Reprocess'}
@@ -215,16 +230,16 @@ export default function MeetingDetailPage() {
                                                 </p>
                                                 <div className="flex flex-wrap items-center gap-2 mt-2">
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                            task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                                                                task.status === 'cancelled' ? 'bg-gray-100 text-gray-600' :
-                                                                    'bg-yellow-100 text-yellow-800'
+                                                        task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                                            task.status === 'cancelled' ? 'bg-gray-100 text-gray-600' :
+                                                                'bg-yellow-100 text-yellow-800'
                                                         }`}>
                                                         {statusDisplay[task.status]}
                                                     </span>
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${task.priority === 'urgent' ? 'bg-red-200 text-red-900' :
-                                                            task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                                                                task.priority === 'medium' ? 'bg-orange-100 text-orange-800' :
-                                                                    'bg-green-100 text-green-800'
+                                                        task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                                            task.priority === 'medium' ? 'bg-orange-100 text-orange-800' :
+                                                                'bg-green-100 text-green-800'
                                                         }`}>
                                                         {priorityDisplay[task.priority]}
                                                     </span>

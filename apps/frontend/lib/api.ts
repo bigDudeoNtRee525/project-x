@@ -12,11 +12,28 @@ import {
   type QuarterlyObjective,
 } from './mockData';
 
+export interface Goal {
+  id: string;
+  title: string;
+  type: 'YEARLY' | 'QUARTERLY';
+  parentId: string | null;
+  children?: Goal[];
+  categories?: Category[];
+  tasks?: any[]; // Using any for tasks to avoid circular dep issues for now, or import Task type
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  goalId: string | null;
+  tasks?: any[];
+}
+
 // ============================================================================
 // MOCK DATA TOGGLE
 // Set to true to use mock data instead of real API calls
 // ============================================================================
-export const USE_MOCK_DATA = true;
+export const USE_MOCK_DATA = false;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
@@ -108,6 +125,20 @@ export const meetingsApi = {
     }
     return api.get(`/meetings/${id}`);
   },
+  delete: async (id: string) => {
+    if (USE_MOCK_DATA) {
+      await delay(300);
+      return { success: true };
+    }
+    return api.delete(`/meetings/${id}`);
+  },
+  confirmTasks: async (id: string) => {
+    if (USE_MOCK_DATA) {
+      await delay(300);
+      return { success: true, count: 5 };
+    }
+    return api.post(`/meetings/${id}/confirm-tasks`);
+  },
 };
 
 export const tasksApi = {
@@ -118,6 +149,22 @@ export const tasksApi = {
       return { tasks: filteredTasks };
     }
     return api.get('/tasks', { params: filters });
+  },
+  create: async (data: any) => {
+    if (USE_MOCK_DATA) {
+      await delay(400);
+      const newTask = {
+        id: `task-${Date.now()}`,
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        reviewed: false,
+        comments: [],
+      };
+      // In a real implementation, we'd add to the mock array
+      return { task: newTask };
+    }
+    return api.post('/tasks', data);
   },
   update: async (id: string, data: any) => {
     if (USE_MOCK_DATA) {
@@ -272,6 +319,38 @@ export const objectivesApi = {
     yearly.quarterlyObjectives.splice(qIndex, 1);
     return { success: true };
   },
+};
+
+export const goalsApi = {
+  list: async () => {
+    if (USE_MOCK_DATA) {
+      // We could return mock data here if we wanted to keep mock mode working
+      // But the goal is to skip placeholders.
+      // However, keeping mock mode working is good practice.
+      // I'll leave it falling back to real API for now or implement mock adapter if needed.
+      // For now, let's just call the API.
+      // If USE_MOCK_DATA is true, we should probably still use the old mock data but adapted?
+      // The user said "what do i need for the backend to work so we can skip the placeholders".
+      // So I should probably set USE_MOCK_DATA to false or just ignore it for these new endpoints.
+      // I'll ignore USE_MOCK_DATA for these new endpoints for now to force backend usage,
+      // or better, I'll set USE_MOCK_DATA to false in the file.
+    }
+    return api.get('/goals');
+  },
+  create: (data: any) => api.post('/goals', data),
+  update: (id: string, data: any) => api.patch(`/goals/${id}`, data),
+  delete: (id: string) => api.delete(`/goals/${id}`),
+};
+
+
+
+export const categoriesApi = {
+  list: async () => {
+    return api.get('/categories');
+  },
+  create: (data: any) => api.post('/categories', data),
+  update: (id: string, data: any) => api.patch(`/categories/${id}`, data),
+  delete: (id: string) => api.delete(`/categories/${id}`),
 };
 
 // Health check

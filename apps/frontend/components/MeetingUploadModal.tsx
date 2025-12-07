@@ -47,7 +47,7 @@ export function MeetingUploadModal({
     const [error, setError] = useState<string | null>(null);
 
     const form = useForm<MeetingFormValues>({
-        resolver: zodResolver(meetingSchema),
+        resolver: zodResolver(meetingSchema as any),
         defaultValues: {
             title: '',
             transcript: '',
