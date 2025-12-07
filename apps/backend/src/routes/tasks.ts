@@ -158,4 +158,32 @@ router.put('/:id/review', optionalAuthenticate, async (req, res) => {
   }
 });
 
+// Delete a task
+router.delete('/:id', optionalAuthenticate, async (req, res) => {
+  try {
+    const taskId = req.params.id;
+
+    // Verify task belongs to user
+    const existingTask = await prisma.task.findFirst({
+      where: {
+        id: taskId,
+        userId: req.user?.id || '00000000-0000-0000-0000-000000000000',
+      },
+    });
+
+    if (!existingTask) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    await prisma.task.delete({
+      where: { id: taskId },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting task:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

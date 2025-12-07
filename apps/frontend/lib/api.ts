@@ -189,6 +189,13 @@ export const tasksApi = {
     }
     return api.put(`/tasks/${id}/review`);
   },
+  delete: async (id: string) => {
+    if (USE_MOCK_DATA) {
+      await delay(300);
+      return { success: true };
+    }
+    return api.delete(`/tasks/${id}`);
+  },
 };
 
 export const contactsApi = {

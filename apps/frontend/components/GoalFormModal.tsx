@@ -45,6 +45,7 @@ interface GoalFormModalProps {
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
     existingGoals?: Goal[]; // For parent selection
+    goalToEdit?: Goal | null;
 }
 
 export function GoalFormModal({
@@ -52,9 +53,11 @@ export function GoalFormModal({
     onOpenChange,
     onSuccess,
     existingGoals = [],
+    goalToEdit,
 }: GoalFormModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const isEditing = !!goalToEdit;
 
     const form = useForm<FormValues>({
         resolver: zodResolver(goalSchema as any),
@@ -67,13 +70,25 @@ export function GoalFormModal({
 
     const type = form.watch('type');
 
-    // Reset form when modal opens/closes
+    // Reset form when modal opens/closes or goalToEdit changes
     useEffect(() => {
-        if (!open) {
-            form.reset();
+        if (open) {
+            if (goalToEdit) {
+                form.reset({
+                    title: goalToEdit.title,
+                    type: goalToEdit.type,
+                    parentId: goalToEdit.parentId || undefined,
+                });
+            } else {
+                form.reset({
+                    title: '',
+                    type: 'YEARLY',
+                    parentId: undefined,
+                });
+            }
             setError(null);
         }
-    }, [open, form]);
+    }, [open, goalToEdit, form]);
 
     const onSubmit = async (data: FormValues) => {
         setIsSubmitting(true);
@@ -85,20 +100,25 @@ export function GoalFormModal({
                 parentId: data.type === 'YEARLY' ? undefined : data.parentId,
             };
 
-            await goalsApi.create(payload);
+            if (isEditing && goalToEdit) {
+                await goalsApi.update(goalToEdit.id, payload);
+            } else {
+                await goalsApi.create(payload);
+            }
 
             onOpenChange(false);
             onSuccess?.();
         } catch (err: any) {
-            console.error('Failed to create goal:', err);
-            setError(err?.error || 'Failed to create goal');
+            console.error('Failed to save goal:', err);
+            setError(err?.error || 'Failed to save goal');
         } finally {
             setIsSubmitting(false);
         }
     };
 
     // Filter potential parents: only YEARLY goals can be parents for QUARTERLY goals
-    const parentOptions = existingGoals.filter(g => g.type === 'YEARLY');
+    // Also prevent selecting itself or its children (simple check: just itself for now)
+    const parentOptions = existingGoals.filter(g => g.type === 'YEARLY' && g.id !== goalToEdit?.id);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,10 +126,10 @@ export function GoalFormModal({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Target className="h-5 w-5 text-primary" />
-                        Create New Goal
+                        {isEditing ? 'Edit Goal' : 'Create New Goal'}
                     </DialogTitle>
                     <DialogDescription>
-                        Define a new strategic goal for your roadmap.
+                        {isEditing ? 'Update your strategic goal.' : 'Define a new strategic goal for your roadmap.'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -200,7 +220,7 @@ export function GoalFormModal({
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? 'Creating...' : 'Create Goal'}
+                                {isSubmitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Goal')}
                             </Button>
                         </DialogFooter>
                     </form>

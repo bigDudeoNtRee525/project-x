@@ -7,10 +7,18 @@ import { Plus } from 'lucide-react';
 import { GoalFormModal } from '@/components/GoalFormModal';
 import { goalsApi, type Goal } from '@/lib/api';
 
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+
 export default function GoalsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [goals, setGoals] = useState<Goal[]>([]);
+
+    // Edit/Delete State
+    const [goalToEdit, setGoalToEdit] = useState<Goal | null>(null);
+    const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const fetchGoals = async () => {
         try {
@@ -28,6 +36,39 @@ export default function GoalsPage() {
     const handleSuccess = () => {
         setRefreshKey(prev => prev + 1);
         fetchGoals();
+        setGoalToEdit(null);
+    };
+
+    const handleEditGoal = (goal: Goal) => {
+        setGoalToEdit(goal);
+        setIsModalOpen(true);
+    };
+
+    const handleDeleteGoal = (goal: Goal) => {
+        setGoalToDelete(goal);
+        setIsDeleteOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!goalToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            await goalsApi.delete(goalToDelete.id);
+            setRefreshKey(prev => prev + 1);
+            fetchGoals();
+            setIsDeleteOpen(false);
+            setGoalToDelete(null);
+        } catch (error) {
+            console.error("Failed to delete goal:", error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleModalOpenChange = (open: boolean) => {
+        setIsModalOpen(open);
+        if (!open) setGoalToEdit(null);
     };
 
     return (
@@ -43,14 +84,28 @@ export default function GoalsPage() {
                 </Button>
             </div>
             <div className="flex-1 bg-gray-50">
-                <GoalHierarchy key={refreshKey} />
+                <GoalHierarchy
+                    key={refreshKey}
+                    onEditGoal={handleEditGoal}
+                    onDeleteGoal={handleDeleteGoal}
+                />
             </div>
 
             <GoalFormModal
                 open={isModalOpen}
-                onOpenChange={setIsModalOpen}
+                onOpenChange={handleModalOpenChange}
                 onSuccess={handleSuccess}
                 existingGoals={goals}
+                goalToEdit={goalToEdit}
+            />
+
+            <DeleteConfirmDialog
+                open={isDeleteOpen}
+                onOpenChange={setIsDeleteOpen}
+                onConfirm={confirmDelete}
+                title="Delete Goal"
+                description={`Are you sure you want to delete "${goalToDelete?.title}"? This action cannot be undone.`}
+                isLoading={isDeleting}
             />
         </div>
     );

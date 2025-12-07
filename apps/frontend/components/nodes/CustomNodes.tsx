@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Target, Folder, CheckSquare, Calendar, ChevronRight } from 'lucide-react';
+import { Target, Folder, CheckSquare, Calendar, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NodeHandle = ({ type, position, id }: { type: 'source' | 'target'; position: Position; id?: string }) => (
@@ -12,12 +12,12 @@ const NodeHandle = ({ type, position, id }: { type: 'source' | 'target'; positio
     />
 );
 
-export const GoalNode = memo(({ data }: { data: { title: string; type: 'YEARLY' | 'QUARTERLY'; label: string } }) => {
+export const GoalNode = memo(({ data }: { data: { title: string; type: 'YEARLY' | 'QUARTERLY'; label: string; onEdit?: () => void; onDelete?: () => void } }) => {
     const isYearly = data.type === 'YEARLY';
 
     return (
         <div className={cn(
-            "min-w-[280px] rounded-xl shadow-lg border-2 transition-all hover:shadow-xl bg-white overflow-hidden",
+            "min-w-[280px] rounded-xl shadow-lg border-2 transition-all hover:shadow-xl bg-white overflow-hidden group",
             isYearly ? "border-purple-500 shadow-purple-100" : "border-blue-500 shadow-blue-100"
         )}>
             <NodeHandle type="target" position={Position.Top} />
@@ -32,11 +32,26 @@ export const GoalNode = memo(({ data }: { data: { title: string; type: 'YEARLY' 
                         {data.type} GOAL
                     </span>
                 </div>
-                {data.label && (
-                    <span className="text-[10px] font-semibold bg-white/50 px-2 py-0.5 rounded-full text-gray-600">
-                        {data.label}
-                    </span>
-                )}
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {data.onEdit && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); data.onEdit?.(); }}
+                            className="p-1 hover:bg-black/5 rounded text-gray-500 hover:text-gray-700"
+                            title="Edit"
+                        >
+                            <Pencil className="w-3 h-3" />
+                        </button>
+                    )}
+                    {data.onDelete && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); data.onDelete?.(); }}
+                            className="p-1 hover:bg-red-100 rounded text-gray-400 hover:text-red-600"
+                            title="Delete"
+                        >
+                            <Trash2 className="w-3 h-3" />
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="p-4">

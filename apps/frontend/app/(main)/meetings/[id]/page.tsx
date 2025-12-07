@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { meetingsApi } from '@/lib/api';
-import { ArrowLeft, Calendar, CheckCircle, Clock, Edit2, FileText, RefreshCw, XCircle } from 'lucide-react';
+import { meetingsApi, tasksApi } from '@/lib/api';
+import { ArrowLeft, Calendar, CheckCircle, Clock, Edit2, FileText, RefreshCw, XCircle, Trash2 } from 'lucide-react';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import type { TaskWithRelations } from '@meeting-task-tool/shared';
 
@@ -256,12 +256,27 @@ export default function MeetingDetailPage() {
                                                     )}
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="sm" onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleTaskClick(task);
-                                            }}>
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex items-center gap-1">
+                                                <Button variant="ghost" size="sm" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleTaskClick(task);
+                                                }}>
+                                                    <Edit2 className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="sm" onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    if (!confirm('Are you sure you want to delete this task?')) return;
+                                                    try {
+                                                        await tasksApi.delete(task.id);
+                                                        loadMeeting();
+                                                    } catch (err) {
+                                                        console.error('Failed to delete task:', err);
+                                                        alert('Failed to delete task');
+                                                    }
+                                                }} className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

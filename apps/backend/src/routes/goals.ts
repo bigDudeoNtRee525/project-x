@@ -82,7 +82,8 @@ router.get('/', optionalAuthenticate, async (req, res) => {
                             include: {
                                 tasks: true
                             }
-                        }
+                        },
+                        tasks: true
                     }
                 },
                 categories: {

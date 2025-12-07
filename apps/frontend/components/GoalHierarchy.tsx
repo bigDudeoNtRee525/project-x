@@ -56,7 +56,8 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
 };
 
 // --- Data Transformation ---
-const buildGraphData = (goals: Goal[]) => {
+// --- Data Transformation ---
+const buildGraphData = (goals: Goal[], onEdit?: (goal: Goal) => void, onDelete?: (goal: Goal) => void) => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
 
@@ -65,9 +66,39 @@ const buildGraphData = (goals: Goal[]) => {
         nodes.push({
             id: yearly.id,
             type: 'goal',
-            data: { title: yearly.title, type: 'YEARLY', label: 'Strategic' },
+            data: {
+                title: yearly.title,
+                type: 'YEARLY',
+                label: 'Strategic',
+                onEdit: onEdit ? () => onEdit(yearly) : undefined,
+                onDelete: onDelete ? () => onDelete(yearly) : undefined,
+            },
             position: { x: 0, y: 0 }, // Initial position, will be calculated by dagre
         });
+
+        // Tasks for Yearly Goal
+        if (yearly.tasks) {
+            yearly.tasks.forEach((task: any) => {
+                nodes.push({
+                    id: task.id,
+                    type: 'task',
+                    data: {
+                        title: task.description,
+                        status: task.status,
+                        assignee: task.assigneeName
+                    },
+                    position: { x: 0, y: 0 },
+                });
+
+                edges.push({
+                    id: `${yearly.id}-${task.id}`,
+                    source: yearly.id,
+                    target: task.id,
+                    type: 'default',
+                    style: { stroke: '#cbd5e1' },
+                });
+            });
+        }
 
         if (yearly.children) {
             yearly.children.forEach((quarterly) => {
@@ -75,7 +106,13 @@ const buildGraphData = (goals: Goal[]) => {
                 nodes.push({
                     id: quarterly.id,
                     type: 'goal',
-                    data: { title: quarterly.title, type: 'QUARTERLY', label: 'Quarterly' },
+                    data: {
+                        title: quarterly.title,
+                        type: 'QUARTERLY',
+                        label: 'Quarterly',
+                        onEdit: onEdit ? () => onEdit(quarterly) : undefined,
+                        onDelete: onDelete ? () => onDelete(quarterly) : undefined,
+                    },
                     position: { x: 0, y: 0 },
                 });
 
@@ -88,6 +125,30 @@ const buildGraphData = (goals: Goal[]) => {
                     animated: true,
                     style: { stroke: '#9333ea', strokeWidth: 2 },
                 });
+
+                // Tasks for Quarterly Goal
+                if (quarterly.tasks) {
+                    quarterly.tasks.forEach((task: any) => {
+                        nodes.push({
+                            id: task.id,
+                            type: 'task',
+                            data: {
+                                title: task.description,
+                                status: task.status,
+                                assignee: task.assigneeName
+                            },
+                            position: { x: 0, y: 0 },
+                        });
+
+                        edges.push({
+                            id: `${quarterly.id}-${task.id}`,
+                            source: quarterly.id,
+                            target: task.id,
+                            type: 'default',
+                            style: { stroke: '#cbd5e1' },
+                        });
+                    });
+                }
 
                 // Categories
                 if (quarterly.categories) {
@@ -141,7 +202,12 @@ const buildGraphData = (goals: Goal[]) => {
     return getLayoutedElements(nodes, edges);
 };
 
-export function GoalHierarchy() {
+interface GoalHierarchyProps {
+    onEditGoal?: (goal: Goal) => void;
+    onDeleteGoal?: (goal: Goal) => void;
+}
+
+export function GoalHierarchy({ onEditGoal, onDeleteGoal }: GoalHierarchyProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -151,7 +217,7 @@ export function GoalHierarchy() {
                 const response = (await goalsApi.list() as unknown) as { goals: Goal[] };
                 // Ensure response.goals is an array
                 const goalsData = response.goals || [];
-                const { nodes: layoutedNodes, edges: layoutedEdges } = buildGraphData(goalsData);
+                const { nodes: layoutedNodes, edges: layoutedEdges } = buildGraphData(goalsData, onEditGoal, onDeleteGoal);
                 setNodes(layoutedNodes);
                 setEdges(layoutedEdges);
             } catch (error) {
@@ -160,7 +226,7 @@ export function GoalHierarchy() {
         };
 
         fetchData();
-    }, []);
+    }, [onEditGoal, onDeleteGoal]);
 
     return (
         <div className="w-full h-full bg-gray-50">
