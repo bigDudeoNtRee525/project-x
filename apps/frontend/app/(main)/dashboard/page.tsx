@@ -302,266 +302,264 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content Area */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Task Filters */}
-          <TaskFilters
-            contacts={contacts}
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            onClearFilters={clearFilters}
-          />
-
-          <Tabs defaultValue="table" className="w-full">
-            <div className="flex items-center justify-between mb-4">
-              <TabsList className="bg-card border border-border">
-                <TabsTrigger value="table" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-                  <List className="h-4 w-4 mr-2" />
-                  Table
-                </TabsTrigger>
-                <TabsTrigger value="gantt" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Gantt
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Analytics
-                </TabsTrigger>
-              </TabsList>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setReportModalOpen(true)}
-                  className="border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-                >
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Reports
-                </Button>
-                <Button variant="outline" size="sm" onClick={loadTasks} disabled={isLoading} className="border-border text-muted-foreground hover:text-foreground hover:bg-accent">
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-            </div>
-
-            <TabsContent value="table" className="space-y-4 mt-0">
-              <Card className="border-none bg-card shadow-sm">
-                <CardHeader>
-                  <CardTitle>Recent Tasks</CardTitle>
-                  <CardDescription>
-                    {filteredTasks.length === tasks.length
-                      ? `All ${tasks.length} tasks`
-                      : `Showing ${filteredTasks.length} of ${tasks.length} tasks`}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      {/* Activity Overview & Team Status Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card className="border border-border bg-card">
+          <CardHeader>
+            <CardTitle>Activity Overview</CardTitle>
+            <CardDescription>Recent updates and actions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentActivity.length > 0 ? (
+                recentActivity.map(activity => (
+                  <div key={activity.id} className="flex gap-3">
+                    <div className={`h-2 w-2 mt-2 rounded-full ${activity.color}`} />
+                    <div>
+                      <p className="text-sm font-medium text-foreground line-clamp-1">{activity.text}</p>
+                      <p className="text-xs text-muted-foreground">{activity.time}</p>
                     </div>
-                  ) : error ? (
-                    <div className="text-center py-12">
-                      <p className="text-red-500">{error}</p>
-                      <Button onClick={loadTasks} variant="outline" className="mt-4">
-                        Try Again
-                      </Button>
-                    </div>
-                  ) : filteredTasks.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      {tasks.length === 0 ? (
-                        <>
-                          <p>No tasks yet. Upload a meeting to get started!</p>
-                          <Button onClick={() => setMeetingModalOpen(true)} className="mt-4">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Your First Meeting
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <p>No tasks match your filters.</p>
-                          <Button onClick={clearFilters} variant="outline" className="mt-4">
-                            Clear Filters
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="text-left py-3 px-4 font-medium w-10">
-                              <Checkbox
-                                checked={isAllSelected}
-                                onCheckedChange={toggleSelectAll}
-                                className={isSomeSelected ? 'data-[state=unchecked]:bg-primary/20' : ''}
-                              />
-                            </th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Description</th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Assignee</th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Deadline</th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Priority</th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {filteredTasks.map((task) => (
-                            <tr
-                              key={task.id}
-                              className={`hover:bg-muted/50 cursor-pointer transition-colors ${selectedTaskIds.has(task.id) ? 'bg-primary/5' : ''
-                                }`}
-                              onClick={() => handleTaskClick(task)}
-                            >
-                              <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                                <Checkbox
-                                  checked={selectedTaskIds.has(task.id)}
-                                  onCheckedChange={() => toggleTaskSelection(task.id)}
-                                />
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center space-x-2">
-                                  <span className="max-w-xs truncate font-medium text-foreground">{task.description}</span>
-                                  {!task.reviewed && (
-                                    <span className="px-1.5 py-0.5 text-xs bg-purple-500/10 text-purple-500 rounded border border-purple-500/20">New</span>
-                                  )}
-                                  {/* Comment count badge */}
-                                  {(task as any).comments?.length > 0 && (
-                                    <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-muted text-muted-foreground rounded">
-                                      <span className="text-[10px]">💬</span>
-                                      {(task as any).comments.length}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 text-muted-foreground">{task.assignee?.name || task.assigneeName || 'Unassigned'}</td>
-                              <td className="py-3 px-4 text-muted-foreground">
-                                {task.deadline ? new Date(task.deadline).toLocaleDateString() : '-'}
-                              </td>
-                              <td className="py-3 px-4">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${task.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                  task.status === 'in_progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                    task.status === 'cancelled' ? 'bg-muted text-muted-foreground border-border' :
-                                      'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                                  }`}>
-                                  {statusDisplay[task.status] || task.status}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${task.priority === 'urgent' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                  task.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                                    task.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                      'bg-green-500/10 text-green-500 border-green-500/20'
-                                  }`}>
-                                  {priorityDisplay[task.priority] || task.priority}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleTaskClick(task);
-                                  }}
-                                  className="text-muted-foreground hover:text-foreground"
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="gantt" className="space-y-4 mt-0">
-              <Card className="border-none bg-card shadow-sm">
-                <CardHeader>
-                  <CardTitle>Timeline View</CardTitle>
-                  <CardDescription>
-                    Visual timeline of tasks with deadlines
-                    {filteredTasks.length !== tasks.length && ` (${filteredTasks.length} filtered)`}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : (
-                    <GanttChart tasks={filteredTasks} />
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="analytics" className="space-y-4 mt-0">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : (
-                <AnalyticsPanel tasks={tasks} />
-              )}
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Right Sidebar / Additional Info */}
-        <div className="space-y-6">
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader>
-              <CardTitle>Activity Overview</CardTitle>
-              <CardDescription>Recent updates and actions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentActivity.length > 0 ? (
-                  recentActivity.map(activity => (
-                    <div key={activity.id} className="flex gap-3">
-                      <div className={`h-2 w-2 mt-2 rounded-full ${activity.color}`} />
-                      <div>
-                        <p className="text-sm font-medium text-foreground line-clamp-1">{activity.text}</p>
-                        <p className="text-xs text-muted-foreground">{activity.time}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">No recent activity</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader>
-              <CardTitle>Team Status</CardTitle>
-              <CardDescription>Who's working on what</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {contacts.slice(0, 5).map(contact => (
-                  <div key={contact.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                        {contact.name.charAt(0)}
-                      </div>
-                      <span className="text-sm font-medium">{contact.name}</span>
-                    </div>
-                    <span className="h-2 w-2 rounded-full bg-green-500" />
                   </div>
-                ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No recent activity</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border bg-card">
+          <CardHeader>
+            <CardTitle>Team Status</CardTitle>
+            <CardDescription>Who's working on what</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {contacts.slice(0, 5).map(contact => (
+                <div key={contact.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                      {contact.name.charAt(0)}
+                    </div>
+                    <span className="text-sm font-medium">{contact.name}</span>
+                  </div>
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Views Section */}
+      <div className="space-y-6">
+        {/* Task Filters */}
+        <TaskFilters
+          contacts={contacts}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onClearFilters={clearFilters}
+        />
+
+        <Tabs defaultValue="table" className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <TabsList className="bg-card border border-border">
+              <TabsTrigger value="table" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <List className="h-4 w-4 mr-2" />
+                Table
+              </TabsTrigger>
+              <TabsTrigger value="gantt" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <Calendar className="h-4 w-4 mr-2" />
+                Gantt
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Analytics
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReportModalOpen(true)}
+                className="border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Reports
+              </Button>
+              <Button variant="outline" size="sm" onClick={loadTasks} disabled={isLoading} className="border-border text-muted-foreground hover:text-foreground hover:bg-accent">
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+
+          <TabsContent value="table" className="space-y-4 mt-0">
+            <Card className="border border-border bg-card">
+              <CardHeader>
+                <CardTitle>Recent Tasks</CardTitle>
+                <CardDescription>
+                  {filteredTasks.length === tasks.length
+                    ? `All ${tasks.length} tasks`
+                    : `Showing ${filteredTasks.length} of ${tasks.length} tasks`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-12">
+                    <p className="text-red-500">{error}</p>
+                    <Button onClick={loadTasks} variant="outline" className="mt-4">
+                      Try Again
+                    </Button>
+                  </div>
+                ) : filteredTasks.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    {tasks.length === 0 ? (
+                      <>
+                        <p>No tasks yet. Upload a meeting to get started!</p>
+                        <Button onClick={() => setMeetingModalOpen(true)} className="mt-4">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Your First Meeting
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p>No tasks match your filters.</p>
+                        <Button onClick={clearFilters} variant="outline" className="mt-4">
+                          Clear Filters
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-medium w-10">
+                            <Checkbox
+                              checked={isAllSelected}
+                              onCheckedChange={toggleSelectAll}
+                              className={isSomeSelected ? 'data-[state=unchecked]:bg-primary/20' : ''}
+                            />
+                          </th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Description</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Assignee</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Deadline</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Priority</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {filteredTasks.map((task) => (
+                          <tr
+                            key={task.id}
+                            className={`hover:bg-muted/50 cursor-pointer transition-colors ${selectedTaskIds.has(task.id) ? 'bg-primary/5' : ''
+                              }`}
+                            onClick={() => handleTaskClick(task)}
+                          >
+                            <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedTaskIds.has(task.id)}
+                                onCheckedChange={() => toggleTaskSelection(task.id)}
+                              />
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center space-x-2">
+                                <span className="max-w-xs truncate font-medium text-foreground">{task.description}</span>
+                                {!task.reviewed && (
+                                  <span className="px-1.5 py-0.5 text-xs bg-purple-500/10 text-purple-500 rounded border border-purple-500/20">New</span>
+                                )}
+                                {/* Comment count badge */}
+                                {(task as any).comments?.length > 0 && (
+                                  <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-muted text-muted-foreground rounded">
+                                    <span className="text-[10px]">💬</span>
+                                    {(task as any).comments.length}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-muted-foreground">{task.assignee?.name || task.assigneeName || 'Unassigned'}</td>
+                            <td className="py-3 px-4 text-muted-foreground">
+                              {task.deadline ? new Date(task.deadline).toLocaleDateString() : '-'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${task.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                                task.status === 'in_progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                  task.status === 'cancelled' ? 'bg-muted text-muted-foreground border-border' :
+                                    'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                }`}>
+                                {statusDisplay[task.status] || task.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${task.priority === 'urgent' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                task.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                                  task.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                    'bg-green-500/10 text-green-500 border-green-500/20'
+                                }`}>
+                                {priorityDisplay[task.priority] || task.priority}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleTaskClick(task);
+                                }}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="gantt" className="space-y-4 mt-0">
+            <Card className="border border-border bg-card">
+              <CardHeader>
+                <CardTitle>Timeline View</CardTitle>
+                <CardDescription>
+                  Visual timeline of tasks with deadlines
+                  {filteredTasks.length !== tasks.length && ` (${filteredTasks.length} filtered)`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 overflow-hidden">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <GanttChart tasks={filteredTasks} />
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4 mt-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            ) : (
+              <AnalyticsPanel tasks={tasks} />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Bulk Action Bar */}

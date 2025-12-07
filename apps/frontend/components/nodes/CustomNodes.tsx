@@ -8,7 +8,7 @@ const NodeHandle = ({ type, position, id }: { type: 'source' | 'target'; positio
         type={type}
         position={position}
         id={id}
-        className="!w-2 !h-2 !bg-gray-400 !border-2 !border-white"
+        className="!w-2 !h-2 !bg-muted-foreground !border-2 !border-background"
     />
 );
 
@@ -17,18 +17,18 @@ export const GoalNode = memo(({ data }: { data: { title: string; type: 'YEARLY' 
 
     return (
         <div className={cn(
-            "min-w-[280px] rounded-xl shadow-lg border-2 transition-all hover:shadow-xl bg-white overflow-hidden group",
-            isYearly ? "border-purple-500 shadow-purple-100" : "border-blue-500 shadow-blue-100"
+            "w-[300px] rounded-xl shadow-lg border transition-all hover:shadow-xl bg-card overflow-hidden group",
+            isYearly ? "border-purple-500/50 shadow-purple-900/20" : "border-blue-500/50 shadow-blue-900/20"
         )}>
             <NodeHandle type="target" position={Position.Top} />
 
             <div className={cn(
                 "px-4 py-2 flex items-center justify-between",
-                isYearly ? "bg-purple-50" : "bg-blue-50"
+                isYearly ? "bg-purple-500/10" : "bg-blue-500/10"
             )}>
                 <div className="flex items-center gap-2">
-                    <Target className={cn("w-4 h-4", isYearly ? "text-purple-600" : "text-blue-600")} />
-                    <span className={cn("text-xs font-bold tracking-wider", isYearly ? "text-purple-700" : "text-blue-700")}>
+                    <Target className={cn("w-4 h-4", isYearly ? "text-purple-400" : "text-blue-400")} />
+                    <span className={cn("text-xs font-bold tracking-wider", isYearly ? "text-purple-400" : "text-blue-400")}>
                         {data.type} GOAL
                     </span>
                 </div>
@@ -36,7 +36,7 @@ export const GoalNode = memo(({ data }: { data: { title: string; type: 'YEARLY' 
                     {data.onEdit && (
                         <button
                             onClick={(e) => { e.stopPropagation(); data.onEdit?.(); }}
-                            className="p-1 hover:bg-black/5 rounded text-gray-500 hover:text-gray-700"
+                            className="p-1 hover:bg-white/10 rounded text-muted-foreground hover:text-foreground"
                             title="Edit"
                         >
                             <Pencil className="w-3 h-3" />
@@ -45,7 +45,7 @@ export const GoalNode = memo(({ data }: { data: { title: string; type: 'YEARLY' 
                     {data.onDelete && (
                         <button
                             onClick={(e) => { e.stopPropagation(); data.onDelete?.(); }}
-                            className="p-1 hover:bg-red-100 rounded text-gray-400 hover:text-red-600"
+                            className="p-1 hover:bg-red-500/20 rounded text-muted-foreground hover:text-red-400"
                             title="Delete"
                         >
                             <Trash2 className="w-3 h-3" />
@@ -55,7 +55,7 @@ export const GoalNode = memo(({ data }: { data: { title: string; type: 'YEARLY' 
             </div>
 
             <div className="p-4">
-                <h3 className="text-sm font-bold text-gray-900 leading-tight">
+                <h3 className="text-sm font-bold text-foreground leading-tight">
                     {data.title}
                 </h3>
             </div>
@@ -67,14 +67,14 @@ export const GoalNode = memo(({ data }: { data: { title: string; type: 'YEARLY' 
 
 export const CategoryNode = memo(({ data }: { data: { name: string } }) => {
     return (
-        <div className="min-w-[240px] bg-white rounded-lg shadow-md border border-yellow-200 hover:border-yellow-400 hover:shadow-lg transition-all">
+        <div className="w-[260px] bg-card rounded-lg shadow-md border border-yellow-500/30 hover:border-yellow-500/50 hover:shadow-lg transition-all">
             <NodeHandle type="target" position={Position.Top} />
 
             <div className="px-4 py-3 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
-                    <Folder className="w-4 h-4 text-yellow-600" />
+                <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center shrink-0">
+                    <Folder className="w-4 h-4 text-yellow-400" />
                 </div>
-                <span className="font-semibold text-gray-800 text-sm">{data.name}</span>
+                <span className="font-semibold text-foreground text-sm">{data.name}</span>
             </div>
 
             <NodeHandle type="source" position={Position.Bottom} />
@@ -84,22 +84,22 @@ export const CategoryNode = memo(({ data }: { data: { name: string } }) => {
 
 export const TaskNode = memo(({ data }: { data: { title: string; status: string; assignee?: string } }) => {
     const statusColors: Record<string, string> = {
-        pending: "bg-gray-100 text-gray-600 border-gray-200",
-        in_progress: "bg-blue-50 text-blue-600 border-blue-200",
-        completed: "bg-green-50 text-green-600 border-green-200",
-        cancelled: "bg-red-50 text-red-600 border-red-200",
+        pending: "bg-secondary text-muted-foreground border-border",
+        in_progress: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+        completed: "bg-green-500/10 text-green-400 border-green-500/20",
+        cancelled: "bg-red-500/10 text-red-400 border-red-500/20",
     };
 
     const statusStyle = statusColors[data.status] || statusColors.pending;
 
     return (
-        <div className="min-w-[220px] bg-white rounded-lg shadow-sm border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all group">
+        <div className="w-[280px] bg-card rounded-lg shadow-sm border border-border hover:border-primary/50 hover:shadow-md transition-all group">
             <NodeHandle type="target" position={Position.Top} />
 
             <div className="p-3">
                 <div className="flex items-start gap-2 mb-2">
-                    <CheckSquare className="w-4 h-4 text-gray-400 mt-0.5 shrink-0 group-hover:text-blue-500 transition-colors" />
-                    <p className="text-xs font-medium text-gray-700 leading-snug line-clamp-2">
+                    <CheckSquare className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0 group-hover:text-primary transition-colors" />
+                    <p className="text-xs font-medium text-foreground leading-snug line-clamp-2">
                         {data.title}
                     </p>
                 </div>
@@ -109,7 +109,7 @@ export const TaskNode = memo(({ data }: { data: { title: string; status: string;
                         {data.status.replace('_', ' ').toUpperCase()}
                     </span>
                     {data.assignee && (
-                        <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-600" title={data.assignee}>
+                        <div className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold text-muted-foreground" title={data.assignee}>
                             {data.assignee.charAt(0)}
                         </div>
                     )}

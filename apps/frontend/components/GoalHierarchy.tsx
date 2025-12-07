@@ -19,14 +19,18 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
     dagreGraph.setDefaultEdgeLabel(() => ({}));
 
     const isHorizontal = direction === 'LR';
-    dagreGraph.setGraph({ rankdir: direction });
+    dagreGraph.setGraph({
+        rankdir: direction,
+        nodesep: 100, // Horizontal spacing between nodes
+        ranksep: 150  // Vertical spacing between ranks
+    });
 
     nodes.forEach((node) => {
         // Approximate dimensions based on node type for layout
-        let width = 280;
+        let width = 300;
         let height = 100;
-        if (node.type === 'category') { width = 240; height = 60; }
-        if (node.type === 'task') { width = 220; height = 80; }
+        if (node.type === 'category') { width = 260; height = 60; }
+        if (node.type === 'task') { width = 280; height = 80; }
 
         dagreGraph.setNode(node.id, { width, height });
     });
@@ -95,7 +99,7 @@ const buildGraphData = (goals: Goal[], onEdit?: (goal: Goal) => void, onDelete?:
                     source: yearly.id,
                     target: task.id,
                     type: 'default',
-                    style: { stroke: '#cbd5e1' },
+                    style: { stroke: '#334155' },
                 });
             });
         }
@@ -145,7 +149,7 @@ const buildGraphData = (goals: Goal[], onEdit?: (goal: Goal) => void, onDelete?:
                             source: quarterly.id,
                             target: task.id,
                             type: 'default',
-                            style: { stroke: '#cbd5e1' },
+                            style: { stroke: '#334155' },
                         });
                     });
                 }
@@ -189,7 +193,7 @@ const buildGraphData = (goals: Goal[], onEdit?: (goal: Goal) => void, onDelete?:
                                     source: cat.id,
                                     target: task.id,
                                     type: 'default',
-                                    style: { stroke: '#cbd5e1' },
+                                    style: { stroke: '#334155' },
                                 });
                             });
                         }
@@ -229,7 +233,7 @@ export function GoalHierarchy({ onEditGoal, onDeleteGoal }: GoalHierarchyProps) 
     }, [onEditGoal, onDeleteGoal]);
 
     return (
-        <div className="w-full h-full bg-gray-50">
+        <div className="w-full h-full bg-background">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -240,12 +244,12 @@ export function GoalHierarchy({ onEditGoal, onDeleteGoal }: GoalHierarchyProps) 
                 attributionPosition="bottom-right"
                 minZoom={0.1}
             >
-                <Background color="#ccc" gap={16} />
+                <Background color="#333" gap={16} />
                 <Controls />
                 <MiniMap nodeStrokeColor={(n) => {
                     if (n.type === 'goal') return '#9333ea';
                     if (n.type === 'category') return '#eab308';
-                    return '#cbd5e1';
+                    return '#334155';
                 }} />
             </ReactFlow>
         </div>

@@ -44,84 +44,229 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  /* Default to dark theme values for Opus look */
-  --background: oklch(0.10 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.15 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.15 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.75 0.15 70); /* Gold/Orange */
-  --primary-foreground: oklch(0.10 0 0);
-  --secondary: oklch(0.20 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.20 0 0);
-  --muted-foreground: oklch(0.60 0 0);
-  --accent: oklch(0.20 0 0);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.25 0 0);
-  --input: oklch(0.25 0 0);
-  --ring: oklch(0.75 0.15 70);
-  
+  --radius: 1rem;
+  /* 16px - Opus uses larger radii */
+
+  /* ========== OPUS DESIGN SYSTEM ========== */
+
+  /* Core Backgrounds */
+  --background: #080808;
+  /* Body background */
+  --foreground: #FFFFFF;
+  /* Primary text */
+  --card: #131313;
+  /* Card backgrounds */
+  --card-foreground: #FFFFFF;
+  --card-hover: #1A1A1A;
+  /* Card hover state */
+  --popover: #131313;
+  --popover-foreground: #FFFFFF;
+
+  /* Brand Colors */
+  --primary: #F5C686;
+  /* Opus Gold */
+  --primary-foreground: #1a1a1a;
+  --primary-hover: #E0B476;
+  /* Gold hover */
+
+  /* Secondary/Neutral */
+  --secondary: #1C1C1E;
+  --secondary-foreground: #FFFFFF;
+  --muted: #1C1C1E;
+  --muted-foreground: #6B7280;
+  /* Muted text */
+  --accent: #1A1A1A;
+  --accent-foreground: #FFFFFF;
+
+  /* Semantic Colors */
+  --destructive: #ef4444;
+  --success: #22c55e;
+  --warning: #f97316;
+  --info: #3b82f6;
+
+  /* Borders & Inputs */
+  --border: #262626;
+  /* Subtle border */
+  --input: #1C1C1E;
+  /* Input background */
+  --ring: #F5C686;
+  /* Focus ring - gold */
+
+  /* Accent Colors (for glass icons, badges) */
+  --accent-green: #22c55e;
+  --accent-green-bg: rgba(34, 197, 94, 0.1);
+  --accent-blue: #3b82f6;
+  --accent-blue-bg: rgba(59, 130, 246, 0.1);
+  --accent-purple: #a855f7;
+  --accent-purple-bg: rgba(168, 85, 247, 0.1);
+  --accent-gold: #F5C686;
+  --accent-gold-bg: rgba(245, 198, 134, 0.1);
+  --accent-orange: #f97316;
+  --accent-orange-bg: rgba(249, 115, 22, 0.1);
+  --accent-red: #ef4444;
+
   /* Chart Colors */
-  --chart-1: oklch(0.75 0.15 70); /* Gold */
-  --chart-2: oklch(0.65 0.2 145); /* Green */
-  --chart-3: oklch(0.6 0.2 250); /* Blue */
-  --chart-4: oklch(0.75 0.18 55); /* Orange/Red */
-  --chart-5: oklch(0.6 0.2 300); /* Purple */
+  --chart-1: #F5C686;
+  /* Gold */
+  --chart-2: #22c55e;
+  /* Green */
+  --chart-3: #3b82f6;
+  /* Blue */
+  --chart-4: #f97316;
+  /* Orange */
+  --chart-5: #a855f7;
+  /* Purple */
 
   /* Sidebar Colors */
-  --sidebar: oklch(0.10 0 0);
-  --sidebar-foreground: oklch(0.60 0 0);
-  --sidebar-primary: oklch(0.75 0.15 70);
-  --sidebar-primary-foreground: oklch(0.10 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.25 0 0);
-  --sidebar-ring: oklch(0.75 0.15 70);
+  --sidebar: #0D0D0D;
+  /* Slightly lighter than body */
+  --sidebar-foreground: #9CA3AF;
+  /* Secondary text */
+  --sidebar-primary: #F5C686;
+  /* Gold for active */
+  --sidebar-primary-foreground: #1a1a1a;
+  --sidebar-accent: #241e16;
+  /* Gold-tinted bg for active nav */
+  --sidebar-accent-foreground: #F5C686;
+  --sidebar-border: #262626;
+  --sidebar-ring: #F5C686;
+
+  /* Text Colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
 }
 
 .dark {
-  --background: oklch(0.10 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.15 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.15 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.75 0.15 70);
-  --primary-foreground: oklch(0.10 0 0);
-  --secondary: oklch(0.20 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.20 0 0);
-  --muted-foreground: oklch(0.60 0 0);
-  --accent: oklch(0.20 0 0);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.25 0 0);
-  --input: oklch(0.25 0 0);
-  --ring: oklch(0.75 0.15 70);
-  --chart-1: oklch(0.75 0.15 70);
-  --chart-2: oklch(0.65 0.2 145);
-  --chart-3: oklch(0.6 0.2 250);
-  --chart-4: oklch(0.75 0.18 55);
-  --chart-5: oklch(0.6 0.2 300);
-  --sidebar: oklch(0.10 0 0);
-  --sidebar-foreground: oklch(0.60 0 0);
-  --sidebar-primary: oklch(0.75 0.15 70);
-  --sidebar-primary-foreground: oklch(0.10 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.25 0 0);
-  --sidebar-ring: oklch(0.75 0.15 70);
+  /* Opus is dark-first, so these mirror :root */
+  --background: #080808;
+  --foreground: #FFFFFF;
+  --card: #131313;
+  --card-foreground: #FFFFFF;
+  --popover: #131313;
+  --popover-foreground: #FFFFFF;
+  --primary: #F5C686;
+  --primary-foreground: #1a1a1a;
+  --secondary: #1C1C1E;
+  --secondary-foreground: #FFFFFF;
+  --muted: #1C1C1E;
+  --muted-foreground: #6B7280;
+  --accent: #1A1A1A;
+  --accent-foreground: #FFFFFF;
+  --destructive: #ef4444;
+  --border: #262626;
+  --input: #1C1C1E;
+  --ring: #F5C686;
+  --chart-1: #F5C686;
+  --chart-2: #22c55e;
+  --chart-3: #3b82f6;
+  --chart-4: #f97316;
+  --chart-5: #a855f7;
+  --sidebar: #0D0D0D;
+  --sidebar-foreground: #9CA3AF;
+  --sidebar-primary: #F5C686;
+  --sidebar-primary-foreground: #1a1a1a;
+  --sidebar-accent: #241e16;
+  --sidebar-accent-foreground: #F5C686;
+  --sidebar-border: #262626;
+  --sidebar-ring: #F5C686;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ========== OPUS UTILITY CLASSES ========== */
+
+@layer utilities {
+
+  /* Text Colors */
+  .text-green {
+    color: var(--accent-green);
+  }
+
+  .text-blue {
+    color: var(--accent-blue);
+  }
+
+  .text-purple {
+    color: var(--accent-purple);
+  }
+
+  .text-gold {
+    color: var(--accent-gold);
+  }
+
+  .text-orange {
+    color: var(--accent-orange);
+  }
+
+  .text-red {
+    color: var(--accent-red);
+  }
+
+  /* Glass Icon Backgrounds */
+  .bg-icon-green {
+    background-color: var(--accent-green-bg);
+    color: var(--accent-green);
+  }
+
+  .bg-icon-blue {
+    background-color: var(--accent-blue-bg);
+    color: var(--accent-blue);
+  }
+
+  .bg-icon-purple {
+    background-color: var(--accent-purple-bg);
+    color: var(--accent-purple);
+  }
+
+  .bg-icon-gold {
+    background-color: var(--accent-gold-bg);
+    color: var(--accent-gold);
+  }
+
+  .bg-icon-orange {
+    background-color: var(--accent-orange-bg);
+    color: var(--accent-orange);
+  }
+
+  /* Status Pills */
+  .pill-success {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+  }
+
+  .pill-info {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+  }
+
+  .pill-warning {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+  }
+
+  .pill-danger {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+  }
+
+  /* Glass Background */
+  .bg-glass {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .bg-glass:hover {
+    background-color: rgba(255, 255, 255, 0.1);
   }
 }

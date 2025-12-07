@@ -1,6 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import {
+    useMemo,
+    useState,
+    useEffect,
+    MouseEvent,
+} from 'react';
+import { createPortal } from 'react-dom';
 import type { TaskWithRelations } from '@meeting-task-tool/shared';
 
 interface GanttChartProps {
@@ -41,16 +47,39 @@ const priorityStyles: Record<string, { ring: string; dot: string; label: string 
 
 type ViewMode = 'week' | 'month' | 'quarter';
 
+const DAY_MS = 1000 * 60 * 60 * 24;
+const ROW_HEIGHT = 56; // px
+const BAR_HEIGHT = 24; // px
+
+type TimeUnit = {
+    date: Date;
+    label: string;
+    subLabel?: string;
+    startDayIndex: number;
+    endDayIndex: number;
+};
+
+type PopoverState = {
+    task: TaskWithRelations;
+    anchor: {
+        top: number;
+        left: number;
+        width: number;
+        bottom: number;
+    };
+} | null;
+
 export function GanttChart({ tasks }: GanttChartProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('month');
     const [hoveredTask, setHoveredTask] = useState<string | null>(null);
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+    const [popover, setPopover] = useState<PopoverState>(null);
 
-    // Filter tasks that have deadlines
-    const tasksWithDeadlines = useMemo(() => {
-        return tasks.filter((t) => t.deadline);
-    }, [tasks]);
+    const tasksWithDeadlines = useMemo(
+        () => tasks.filter((t) => t.deadline),
+        [tasks],
+    );
 
-    // Calculate date range for the chart
     const { startDate, endDate, totalDays, timeUnits } = useMemo(() => {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
@@ -65,7 +94,9 @@ export function GanttChart({ tasks }: GanttChartProps) {
             end.setDate(end.getDate() + 28);
         } else {
             const dates = tasksWithDeadlines.map((t) => new Date(t.deadline!));
-            const minDate = new Date(Math.min(...dates.map((d) => d.getTime()), now.getTime()));
+            const minDate = new Date(
+                Math.min(...dates.map((d) => d.getTime()), now.getTime()),
+            );
             const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
 
             start = new Date(minDate);
@@ -75,47 +106,90 @@ export function GanttChart({ tasks }: GanttChartProps) {
             end.setDate(end.getDate() + 14);
         }
 
-        // Adjust based on view mode
+        // Normalize times
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+
+        // Align start to view boundaries
         if (viewMode === 'week') {
-            start.setDate(start.getDate() - start.getDay()); // Start of week
+            // Start of week (Sunday)
+            start.setDate(start.getDate() - start.getDay());
         } else if (viewMode === 'month') {
-            start.setDate(1); // Start of month
+            // First of month
+            start.setDate(1);
         } else {
-            start.setMonth(Math.floor(start.getMonth() / 3) * 3, 1); // Start of quarter
+            // Start of quarter
+            const m = start.getMonth();
+            const qStart = Math.floor(m / 3) * 3;
+            start.setMonth(qStart, 1);
         }
 
-        const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        const diffMs = end.getTime() - start.getTime();
+        const days = Math.max(1, Math.ceil(diffMs / DAY_MS));
 
-        // Generate time units based on view mode
-        const units: { date: Date; label: string; subLabel?: string }[] = [];
-        const current = new Date(start);
+        const units: TimeUnit[] = [];
 
         if (viewMode === 'week') {
-            while (current < end) {
+            // 1 day per column
+            for (let dayIndex = 0; dayIndex < days; dayIndex++) {
+                const current = new Date(start.getTime() + dayIndex * DAY_MS);
                 units.push({
-                    date: new Date(current),
+                    date: current,
                     label: current.toLocaleDateString('en-US', { weekday: 'short' }),
                     subLabel: current.getDate().toString(),
+                    startDayIndex: dayIndex,
+                    endDayIndex: dayIndex + 1,
                 });
-                current.setDate(current.getDate() + 1);
             }
         } else if (viewMode === 'month') {
+            // 1 label per 7 days
+            let current = new Date(start);
             while (current < end) {
-                const weekStart = new Date(current);
+                const startIndex = Math.round(
+                    (current.getTime() - start.getTime()) / DAY_MS,
+                );
+                const next = new Date(current);
+                next.setDate(next.getDate() + 7);
+                const endIndex = Math.min(
+                    days,
+                    Math.round((next.getTime() - start.getTime()) / DAY_MS),
+                );
+
                 units.push({
                     date: new Date(current),
-                    label: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    label: current.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                    }),
+                    startDayIndex: startIndex,
+                    endDayIndex: Math.max(startIndex + 1, endIndex),
                 });
-                current.setDate(current.getDate() + 7);
+
+                current = next;
             }
         } else {
+            // Quarter: 1 column per month
+            let current = new Date(start);
             while (current < end) {
+                const startIndex = Math.round(
+                    (current.getTime() - start.getTime()) / DAY_MS,
+                );
+                const next = new Date(current);
+                next.setMonth(next.getMonth() + 1);
+                const endIndex = Math.min(
+                    days,
+                    Math.round((next.getTime() - start.getTime()) / DAY_MS),
+                );
+
                 units.push({
                     date: new Date(current),
                     label: current.toLocaleDateString('en-US', { month: 'short' }),
                     subLabel: current.getFullYear().toString(),
+                    startDayIndex: startIndex,
+                    endDayIndex: Math.max(startIndex + 1, endIndex),
                 });
-                current.setMonth(current.getMonth() + 1);
+
+                current = next;
             }
         }
 
@@ -127,32 +201,89 @@ export function GanttChart({ tasks }: GanttChartProps) {
         };
     }, [tasksWithDeadlines, viewMode]);
 
-    // Calculate position of a task on the timeline
-    function getTaskPosition(deadline: Date) {
-        const deadlineTime = new Date(deadline).getTime();
+    // Width of one day in pixels (controls horizontal density)
+    const dayWidth = useMemo(() => {
+        if (viewMode === 'week') return 32;
+        if (viewMode === 'month') return 18;
+        return 12; // quarter
+    }, [viewMode]);
+
+    const chartWidth = Math.max(1, totalDays * dayWidth);
+
+    // Today marker as day index from start
+    const todayIndex = useMemo(() => {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
         const startTime = startDate.getTime();
-        const totalTime = endDate.getTime() - startTime;
+        const endTime = endDate.getTime();
 
-        // Task duration based on view mode
-        const durationDays = viewMode === 'week' ? 2 : viewMode === 'month' ? 5 : 14;
-        const taskStartTime = deadlineTime - (durationDays * 24 * 60 * 60 * 1000);
+        if (now.getTime() < startTime || now.getTime() > endTime) return null;
+        const diff = now.getTime() - startTime;
+        return Math.round(diff / DAY_MS);
+    }, [startDate, endDate]);
 
-        const left = Math.max(0, ((taskStartTime - startTime) / totalTime) * 100);
-        const right = Math.min(100, ((deadlineTime - startTime) / totalTime) * 100);
-        const width = Math.max(right - left, 4); // Minimum 4% width
+    function getTaskPositionPx(deadline: Date) {
+        const startTime = startDate.getTime();
+        const endTime = endDate.getTime();
+        const totalMs = endTime - startTime;
+
+        if (totalMs <= 0) {
+            return { left: 0, width: 40 };
+        }
+
+        const deadlineTime = deadline.getTime();
+
+        // Fake "duration" before deadline for visual bar length
+        const durationDays =
+            viewMode === 'week' ? 2 : viewMode === 'month' ? 5 : 14;
+
+        let startMs = deadlineTime - durationDays * DAY_MS;
+        let endMs = deadlineTime;
+
+        // Clamp to visible range
+        if (endMs < startTime) {
+            endMs = startTime;
+        }
+        if (startMs > endTime) {
+            startMs = endTime;
+        }
+
+        startMs = Math.max(startMs, startTime);
+        endMs = Math.min(endMs, endTime);
+
+        const startDayIndex = (startMs - startTime) / DAY_MS;
+        const endDayIndex = (endMs - startTime) / DAY_MS;
+
+        const left = startDayIndex * dayWidth;
+        const width = Math.max((endDayIndex - startDayIndex) * dayWidth, 40); // min width in px
 
         return { left, width };
     }
 
-    // Today marker position
-    const todayPosition = useMemo(() => {
-        const now = new Date();
-        now.setHours(12, 0, 0, 0);
-        const startTime = startDate.getTime();
-        const totalTime = endDate.getTime() - startTime;
-        const position = ((now.getTime() - startTime) / totalTime) * 100;
-        return position >= 0 && position <= 100 ? position : null;
-    }, [startDate, endDate]);
+    function handleTaskClick(
+        task: TaskWithRelations,
+        event: MouseEvent<HTMLDivElement>,
+    ) {
+        const rect = event.currentTarget.getBoundingClientRect();
+
+        setSelectedTaskId((prev) => (prev === task.id ? null : task.id));
+
+        // Toggle: if same task is already open, close it
+        setPopover((prev) => {
+            if (prev && prev.task.id === task.id) {
+                return null;
+            }
+            return {
+                task,
+                anchor: {
+                    top: rect.top,
+                    left: rect.left,
+                    width: rect.width,
+                    bottom: rect.bottom,
+                },
+            };
+        });
+    }
 
     if (tasksWithDeadlines.length === 0) {
         return (
@@ -160,31 +291,51 @@ export function GanttChart({ tasks }: GanttChartProps) {
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:24px_24px] opacity-10" />
                 <div className="relative h-72 flex flex-col items-center justify-center">
                     <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4 shadow-lg">
-                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <svg
+                            className="w-8 h-8 text-muted-foreground"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-semibold text-card-foreground mb-1">No Tasks with Deadlines</h3>
-                    <p className="text-sm text-muted-foreground">Add deadlines to your tasks to visualize them on the timeline</p>
+                    <h3 className="text-lg font-semibold text-card-foreground mb-1">
+                        No Tasks with Deadlines
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                        Add deadlines to your tasks to visualize them on the timeline
+                    </p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
+        <div className="flex flex-col rounded-2xl bg-card border border-border overflow-hidden">
             {/* View Mode Selector */}
-            <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
+            <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b border-border">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">View:</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                        View:
+                    </span>
                     <div className="flex rounded-lg bg-muted p-0.5">
                         {(['week', 'month', 'quarter'] as ViewMode[]).map((mode) => (
                             <button
                                 key={mode}
-                                onClick={() => setViewMode(mode)}
+                                onClick={() => {
+                                    setViewMode(mode);
+                                    // Close popover on view mode change to avoid weird positions
+                                    setPopover(null);
+                                }}
                                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${viewMode === mode
-                                    ? 'bg-card text-card-foreground shadow-sm'
-                                    : 'text-muted-foreground hover:text-card-foreground'
+                                        ? 'bg-card text-card-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-card-foreground'
                                     }`}
                             >
                                 {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -197,197 +348,390 @@ export function GanttChart({ tasks }: GanttChartProps) {
                         <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                         Today
                     </span>
-                    <span>{tasksWithDeadlines.length} task{tasksWithDeadlines.length !== 1 ? 's' : ''}</span>
+                    <span>
+                        {tasksWithDeadlines.length} task
+                        {tasksWithDeadlines.length !== 1 ? 's' : ''}
+                    </span>
                 </div>
             </div>
 
-            {/* Timeline Header */}
-            <div className="flex border-b border-border bg-muted/10">
-                <div className="w-72 shrink-0 px-4 py-2 font-medium text-xs text-muted-foreground uppercase tracking-wider border-r border-border">
-                    Task Details
-                </div>
-                <div className="flex-1 relative overflow-x-auto">
-                    <div className="flex min-w-full">
-                        {timeUnits.map((unit, idx) => (
-                            <div
-                                key={idx}
-                                className="flex-1 min-w-[80px] px-2 py-2 text-center border-r border-border last:border-r-0"
-                            >
-                                <div className="text-xs font-medium text-card-foreground">{unit.label}</div>
-                                {unit.subLabel && (
-                                    <div className="text-[10px] text-muted-foreground">{unit.subLabel}</div>
-                                )}
-                            </div>
-                        ))}
+            {/* Main grid (shared vertical scroll) */}
+            <div className="flex min-h-[280px] max-h-[560px] overflow-y-auto">
+                {/* Left: Task details column (non-clickable) */}
+                <div className="w-80 shrink-0 border-r border-border bg-card">
+                    <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-2 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        Task
                     </div>
-                </div>
-            </div>
+                    <div>
+                        {tasksWithDeadlines.map((task) => {
+                            const isHovered = hoveredTask === task.id;
+                            const isSelected = selectedTaskId === task.id;
+                            const status = statusStyles[task.status] || statusStyles.pending;
+                            const priority =
+                                priorityStyles[task.priority] || priorityStyles.medium;
 
-            {/* Task Rows */}
-            <div className="max-h-[400px] overflow-y-auto">
-                {tasksWithDeadlines.map((task, index) => {
-                    const position = getTaskPosition(new Date(task.deadline!));
-                    const isHovered = hoveredTask === task.id;
-                    const status = statusStyles[task.status] || statusStyles.pending;
-                    const priority = priorityStyles[task.priority] || priorityStyles.medium;
-
-                    return (
-                        <div
-                            key={task.id}
-                            className={`flex border-b border-border last:border-b-0 transition-colors duration-150 ${isHovered ? 'bg-muted/50' : index % 2 === 0 ? 'bg-card' : 'bg-muted/10'
-                                }`}
-                            onMouseEnter={() => setHoveredTask(task.id)}
-                            onMouseLeave={() => setHoveredTask(null)}
-                        >
-                            {/* Task Info Column */}
-                            <div className="w-72 shrink-0 p-4 border-r border-border">
-                                <div className="flex items-start gap-3">
-                                    {/* Priority indicator */}
-                                    <div className={`mt-1 w-2 h-2 rounded-full ${priority.dot} shrink-0`} />
+                            return (
+                                <div
+                                    key={task.id}
+                                    className={`flex items-center gap-3 px-4 text-sm transition-colors border-b border-border/40 last:border-b-0 ${isSelected
+                                            ? 'bg-muted/80'
+                                            : isHovered
+                                                ? 'bg-muted/60'
+                                                : 'hover:bg-muted/30'
+                                        }`}
+                                    style={{ height: ROW_HEIGHT }}
+                                    onMouseEnter={() => setHoveredTask(task.id)}
+                                    onMouseLeave={() => setHoveredTask(null)}
+                                >
+                                    <div
+                                        className={`w-2.5 h-2.5 rounded-full ${priority.dot} shrink-0`}
+                                    />
                                     <div className="min-w-0 flex-1">
-                                        <h4 className="text-sm font-medium text-card-foreground truncate leading-tight">
-                                            {task.description}
-                                        </h4>
-                                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${task.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                                task.status === 'in_progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                    task.status === 'cancelled' ? 'bg-muted text-muted-foreground border-border' :
-                                                        'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                                                }`}>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-card-foreground truncate">
+                                                {task.description}
+                                            </span>
+                                            <span
+                                                className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap ${task.status === 'completed'
+                                                        ? 'bg-green-500/10 text-green-500 border-green-500/25'
+                                                        : task.status === 'in_progress'
+                                                            ? 'bg-blue-500/10 text-blue-500 border-blue-500/25'
+                                                            : task.status === 'cancelled'
+                                                                ? 'bg-muted text-muted-foreground border-border'
+                                                                : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/25'
+                                                    }`}
+                                            >
                                                 {status.text}
                                             </span>
-                                            <span className="text-[10px] text-muted-foreground">
-                                                {task.assigneeName || 'Unassigned'}
-                                            </span>
                                         </div>
-                                        <div className="mt-1 text-[10px] text-muted-foreground">
-                                            Due: {new Date(task.deadline!).toLocaleDateString('en-US', {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric'
-                                            })}
+                                        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground truncate">
+                                            <span>{task.assigneeName || 'Unassigned'}</span>
+                                            <span>•</span>
+                                            <span>
+                                                Due{' '}
+                                                {new Date(task.deadline!).toLocaleDateString('en-US', {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    year: 'numeric',
+                                                })}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            );
+                        })}
+                    </div>
+                </div>
 
-                            {/* Timeline Column */}
-                            <div className="flex-1 relative py-4 px-2 min-h-[72px]">
-                                {/* Grid lines */}
-                                <div className="absolute inset-0 flex">
-                                    {timeUnits.map((_, idx) => (
+                {/* Right: Timeline */}
+                <div className="flex-1 overflow-hidden">
+                    <div className="relative h-full overflow-x-auto">
+                        <div className="relative" style={{ minWidth: chartWidth }}>
+                            {/* Timeline header */}
+                            <div className="sticky top-0 z-10 flex border-b border-border bg-muted/70 backdrop-blur-sm">
+                                {timeUnits.map((unit, idx) => {
+                                    const colWidth =
+                                        (unit.endDayIndex - unit.startDayIndex || 1) * dayWidth;
+
+                                    return (
                                         <div
                                             key={idx}
-                                            className="flex-1 border-r border-border last:border-r-0"
-                                            style={{ minWidth: '80px' }}
+                                            className="px-2 py-2 text-center border-r border-border last:border-r-0"
+                                            style={{ width: colWidth }}
+                                        >
+                                            <div className="text-xs font-medium text-card-foreground">
+                                                {unit.label}
+                                            </div>
+                                            {unit.subLabel && (
+                                                <div className="text-[10px] text-muted-foreground">
+                                                    {unit.subLabel}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Grid + bars */}
+                            <div
+                                className="relative"
+                                style={{ height: tasksWithDeadlines.length * ROW_HEIGHT }}
+                            >
+                                {/* Vertical day grid */}
+                                <div className="absolute inset-0 pointer-events-none flex">
+                                    {Array.from({ length: totalDays }).map((_, dayIndex) => (
+                                        <div
+                                            key={dayIndex}
+                                            className={`h-full border-r ${dayIndex % 7 === 0
+                                                    ? 'border-border'
+                                                    : 'border-border/40'
+                                                }`}
+                                            style={{ width: dayWidth }}
+                                        />
+                                    ))}
+                                </div>
+
+                                {/* Horizontal row separators */}
+                                <div className="absolute inset-0 pointer-events-none">
+                                    {tasksWithDeadlines.map((_, rowIndex) => (
+                                        <div
+                                            key={rowIndex}
+                                            className="absolute left-0 right-0 border-b border-border/40"
+                                            style={{ top: (rowIndex + 1) * ROW_HEIGHT }}
                                         />
                                     ))}
                                 </div>
 
                                 {/* Today marker */}
-                                {todayPosition !== null && (
-                                    <div
-                                        className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
-                                        style={{ left: `${todayPosition}%` }}
-                                    >
-                                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
+                                {todayIndex !== null && (
+                                    <div className="absolute top-0 bottom-0 pointer-events-none">
+                                        <div
+                                            className="absolute top-0 bottom-0 w-[2px] bg-red-500"
+                                            style={{ left: todayIndex * dayWidth }}
+                                        >
+                                            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
+                                        </div>
                                     </div>
                                 )}
 
-                                {/* Task bar */}
-                                <div
-                                    className={`absolute top-1/2 -translate-y-1/2 h-8 rounded-lg bg-gradient-to-r ${status.gradient} shadow-md transition-all duration-200 cursor-pointer group ${isHovered ? 'ring-2 ring-offset-1 ring-offset-card ' + priority.ring + ' scale-[1.02]' : ''
-                                        }`}
-                                    style={{
-                                        left: `${position.left}%`,
-                                        width: `${position.width}%`,
-                                        minWidth: '60px',
-                                    }}
-                                >
-                                    {/* Shine effect */}
-                                    <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-white/25 to-transparent" />
+                                {/* Task bars (clickable) */}
+                                <div className="relative">
+                                    {tasksWithDeadlines.map((task, rowIndex) => {
+                                        const position = getTaskPositionPx(
+                                            new Date(task.deadline!),
+                                        );
+                                        const isHovered = hoveredTask === task.id;
+                                        const isSelected = selectedTaskId === task.id;
+                                        const status =
+                                            statusStyles[task.status] || statusStyles.pending;
+                                        const priority =
+                                            priorityStyles[task.priority] || priorityStyles.medium;
 
-                                    {/* Progress indicator for in_progress */}
-                                    {task.status === 'in_progress' && (
-                                        <div className="absolute inset-0 rounded-lg overflow-hidden">
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-                                        </div>
-                                    )}
+                                        const top =
+                                            rowIndex * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2;
 
-                                    {/* Content */}
-                                    <div className="relative h-full flex items-center justify-between px-2">
-                                        <span className="text-[11px] text-white font-medium truncate drop-shadow-sm">
-                                            {task.description.length > 20 ? task.description.substring(0, 20) + '...' : task.description}
-                                        </span>
-                                        {position.width > 10 && (
-                                            <span className="text-[10px] text-white/80 font-medium ml-1 shrink-0">
-                                                {new Date(task.deadline!).toLocaleDateString('en-US', {
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                })}
-                                            </span>
-                                        )}
-                                    </div>
+                                        return (
+                                            <div
+                                                key={task.id}
+                                                className="absolute cursor-pointer"
+                                                style={{
+                                                    top,
+                                                    left: position.left,
+                                                    width: position.width,
+                                                    height: BAR_HEIGHT,
+                                                }}
+                                                onMouseEnter={() => setHoveredTask(task.id)}
+                                                onMouseLeave={() => setHoveredTask(null)}
+                                                onClick={(e) => handleTaskClick(task, e)}
+                                            >
+                                                <div
+                                                    className={`relative h-full rounded-xl bg-gradient-to-r ${status.gradient} shadow-md transition-transform duration-150 ${isHovered || isSelected
+                                                            ? `scale-[1.02] ring-2 ring-offset-1 ring-offset-card ${priority.ring}`
+                                                            : ''
+                                                        }`}
+                                                >
+                                                    {/* Shine effect */}
+                                                    <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
 
-                                    {/* Tooltip on hover */}
-                                    <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-popover text-popover-foreground text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20 border border-border`}>
-                                        <div className="font-medium">{task.description}</div>
-                                        <div className="text-muted-foreground mt-1">
-                                            {new Date(task.deadline!).toLocaleDateString('en-US', {
-                                                weekday: 'long',
-                                                month: 'long',
-                                                day: 'numeric',
-                                                year: 'numeric'
-                                            })}
-                                        </div>
-                                        <div className="text-muted-foreground text-[10px] mt-0.5">
-                                            {priority.label} Priority • {status.text}
-                                        </div>
-                                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-popover rotate-45 border-r border-b border-border" />
-                                    </div>
+                                                    {/* Progress shimmer for in_progress */}
+                                                    {task.status === 'in_progress' && (
+                                                        <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                                                        </div>
+                                                    )}
+
+                                                    {/* Bar content */}
+                                                    <div className="relative h-full flex items-center justify-between px-3 gap-2">
+                                                        <span className="text-xs text-white font-medium truncate drop-shadow-sm">
+                                                            {task.description.length > 30
+                                                                ? task.description.substring(0, 30) + '…'
+                                                                : task.description}
+                                                        </span>
+                                                        {position.width > 80 && (
+                                                            <span className="text-[11px] text-white/90 font-medium shrink-0 drop-shadow-sm">
+                                                                {new Date(task.deadline!).toLocaleDateString(
+                                                                    'en-US',
+                                                                    {
+                                                                        month: 'short',
+                                                                        day: 'numeric',
+                                                                    },
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
-                    );
-                })}
+                    </div>
+                </div>
             </div>
 
             {/* Legend */}
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 bg-muted/30 border-t border-border">
                 <div className="flex items-center gap-4">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Status</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                        Status
+                    </span>
                     <div className="flex items-center gap-3">
                         {Object.entries(statusStyles).map(([key, style]) => (
                             <span key={key} className="flex items-center gap-1.5">
                                 <span className={`w-3 h-3 rounded-md ${style.bg}`} />
-                                <span className="text-xs text-muted-foreground">{style.text}</span>
+                                <span className="text-xs text-muted-foreground">
+                                    {style.text}
+                                </span>
                             </span>
                         ))}
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Priority</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                        Priority
+                    </span>
                     <div className="flex items-center gap-3">
                         {Object.entries(priorityStyles).map(([key, style]) => (
                             <span key={key} className="flex items-center gap-1.5">
                                 <span className={`w-2 h-2 rounded-full ${style.dot}`} />
-                                <span className="text-xs text-muted-foreground">{style.label}</span>
+                                <span className="text-xs text-muted-foreground">
+                                    {style.label}
+                                </span>
                             </span>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* CSS for shimmer animation - using global style */}
+            {/* CSS for shimmer animation */}
             <style>{`
-                @keyframes gantt-shimmer {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(100%); }
-                }
-                .animate-shimmer {
-                    animation: gantt-shimmer 2s infinite;
-                }
-            `}</style>
+        @keyframes gantt-shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-shimmer {
+          animation: gantt-shimmer 2s infinite;
+        }
+      `}</style>
+
+            {/* Click info box rendered via portal (not clipped by overflow) */}
+            {popover && (
+                <TaskPopover
+                    state={popover}
+                    onClose={() => {
+                        setPopover(null);
+                        setSelectedTaskId(null);
+                    }}
+                />
+            )}
         </div>
+    );
+}
+
+/**
+ * Renders the info box into document.body so it is not clipped
+ * by the Gantt chart's overflow/scroll containers.
+ */
+function TaskPopover({
+    state,
+    onClose,
+}: {
+    state: PopoverState;
+    onClose: () => void;
+}) {
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!state) return;
+
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        const handleScroll = () => {
+            // Close on any scroll so the popover doesn't get out of sync with its anchor
+            onClose();
+        };
+
+        window.addEventListener('keydown', handleKey);
+        window.addEventListener('scroll', handleScroll, true);
+
+        return () => {
+            window.removeEventListener('keydown', handleKey);
+            window.removeEventListener('scroll', handleScroll, true);
+        };
+    }, [state, onClose]);
+
+    if (!mounted || !state) return null;
+    if (typeof document === 'undefined') return null;
+
+    const { task, anchor } = state;
+    const status = statusStyles[task.status] || statusStyles.pending;
+    const priority = priorityStyles[task.priority] || priorityStyles.medium;
+
+    // Position below the clicked bar; you can flip to above by using anchor.top
+    const top = anchor.bottom + 8;
+    const left = anchor.left + anchor.width / 2;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[80] pointer-events-none">
+            {/* click-away overlay */}
+            <div
+                className="absolute inset-0 pointer-events-auto"
+                onClick={onClose}
+            />
+            <div
+                className="absolute pointer-events-auto max-w-xs sm:max-w-sm"
+                style={{
+                    top,
+                    left,
+                    transform: 'translateX(-50%)',
+                }}
+            >
+                <div className="rounded-xl border border-border bg-popover text-popover-foreground shadow-xl px-3 py-2 text-xs">
+                    <div className="flex items-start gap-2">
+                        <span
+                            className={`mt-0.5 w-2.5 h-2.5 rounded-full ${priority.dot}`}
+                        />
+                        <div>
+                            <div className="text-sm font-semibold leading-snug break-words">
+                                {task.description}
+                            </div>
+                            <div className="mt-1 text-[11px] text-muted-foreground flex flex-wrap items-center gap-2">
+                                <span>
+                                    Status:{' '}
+                                    <span className="font-medium">{status.text}</span>
+                                </span>
+                                <span>•</span>
+                                <span>
+                                    Priority:{' '}
+                                    <span className="font-medium">{priority.label}</span>
+                                </span>
+                                {task.assigneeName && (
+                                    <>
+                                        <span>•</span>
+                                        <span>Assignee: {task.assigneeName}</span>
+                                    </>
+                                )}
+                            </div>
+                            <div className="mt-1 text-[11px] text-muted-foreground">
+                                Due{' '}
+                                {new Date(task.deadline!).toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body,
     );
 }

@@ -209,78 +209,82 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
 
     return (
         <div className="space-y-6">
-            {/* Top Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="border-none bg-card shadow-sm">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4" />
-                            Completion Rate
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-green-500">{analytics.completionRate}%</span>
-                            <span className={`text-sm flex items-center gap-1 ${analytics.completionRateTrend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                <TrendingUp className={`h-3 w-3 ${analytics.completionRateTrend >= 0 ? '' : 'rotate-180'}`} />
-                                {analytics.completionRateTrend > 0 ? '+' : ''}{analytics.completionRateTrend}%
-                            </span>
+            {/* Top Stats Row - Opus Style */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                {/* Completion Rate Card */}
+                <Card className="border border-border bg-card">
+                    <CardContent className="pt-5">
+                        <div className="flex justify-between items-start mb-4">
+                            <span className="text-sm font-medium text-muted-foreground">Completion Rate</span>
+                            <div className="h-9 w-9 rounded-[10px] bg-[rgba(34,197,94,0.1)] flex items-center justify-center">
+                                <CheckCircle2 className="h-4 w-4 text-[#22c55e]" />
+                            </div>
+                        </div>
+                        <div className="text-[28px] font-bold text-white mb-2">
+                            {analytics.completionRate}%
+                        </div>
+                        <div className={`text-xs font-semibold flex items-center gap-1 ${analytics.completionRateTrend >= 0 ? 'text-[#22c55e]' : 'text-[#ef4444]'}`}>
+                            <TrendingUp className={`h-3 w-3 ${analytics.completionRateTrend < 0 ? 'rotate-180' : ''}`} />
+                            {analytics.completionRateTrend > 0 ? '+' : ''}{analytics.completionRateTrend}% vs last month
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">{analytics.completedTasks} of {analytics.totalTasks} tasks</p>
                     </CardContent>
                 </Card>
 
-                <Card className="border-none bg-card shadow-sm">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            Avg. Completion Time
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                {/* Avg Completion Time Card */}
+                <Card className="border border-border bg-card">
+                    <CardContent className="pt-5">
+                        <div className="flex justify-between items-start mb-4">
+                            <span className="text-sm font-medium text-muted-foreground">Avg. Completion Time</span>
+                            <div className="h-9 w-9 rounded-[10px] bg-[rgba(245,198,134,0.1)] flex items-center justify-center">
+                                <Clock className="h-4 w-4 text-[#F5C686]" />
+                            </div>
+                        </div>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-card-foreground">{analytics.avgCompletionDays}</span>
+                            <span className="text-[28px] font-bold text-white">{analytics.avgCompletionDays}</span>
                             <span className="text-lg text-muted-foreground">days</span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">From creation to done</p>
+                        <p className="text-xs text-muted-foreground mt-2">From creation to done</p>
                     </CardContent>
                 </Card>
 
-                <Card className="border-none bg-card shadow-sm">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            Active Assignees
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-blue-500">
+                {/* Active Assignees Card */}
+                <Card className="border border-border bg-card">
+                    <CardContent className="pt-5">
+                        <div className="flex justify-between items-start mb-4">
+                            <span className="text-sm font-medium text-muted-foreground">Active Assignees</span>
+                            <div className="h-9 w-9 rounded-[10px] bg-[rgba(59,130,246,0.1)] flex items-center justify-center">
+                                <Users className="h-4 w-4 text-[#3b82f6]" />
+                            </div>
+                        </div>
+                        <div className="text-[28px] font-bold text-white mb-2">
                             {Object.keys(analytics.assigneeCounts).filter(k => k !== 'Unassigned').length}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Team members with tasks</p>
+                        <p className="text-xs text-muted-foreground">Team members with tasks</p>
                     </CardContent>
                 </Card>
 
-                <Card className="border-none bg-card shadow-sm">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <BarChart3 className="h-4 w-4" />
-                            In Progress
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-orange-500">
+                {/* In Progress Card */}
+                <Card className="border border-border bg-card">
+                    <CardContent className="pt-5">
+                        <div className="flex justify-between items-start mb-4">
+                            <span className="text-sm font-medium text-muted-foreground">In Progress</span>
+                            <div className="h-9 w-9 rounded-[10px] bg-[rgba(249,115,22,0.1)] flex items-center justify-center">
+                                <BarChart3 className="h-4 w-4 text-[#f97316]" />
+                            </div>
+                        </div>
+                        <div className="text-[28px] font-bold text-white mb-2">
                             {analytics.statusCounts.in_progress || 0}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Tasks being worked on</p>
+                        <p className="text-xs text-muted-foreground">Tasks being worked on</p>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* Weekly Activity Chart */}
-                <Card className="border-none bg-card shadow-sm">
+                <Card className="border border-border bg-card">
                     <CardHeader>
                         <CardTitle className="text-lg text-card-foreground">Weekly Activity</CardTitle>
                         <CardDescription className="text-muted-foreground">Tasks created vs completed over the last 4 weeks</CardDescription>
@@ -346,7 +350,7 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
                 </Card>
 
                 {/* Status Breakdown Donut */}
-                <Card className="border-none bg-card shadow-sm">
+                <Card className="border border-border bg-card">
                     <CardHeader>
                         <CardTitle className="text-lg text-card-foreground">Status Breakdown</CardTitle>
                         <CardDescription className="text-muted-foreground">Distribution of tasks by current status</CardDescription>
@@ -422,7 +426,7 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
             </div>
 
             {/* Assignee Workload */}
-            <Card className="border-none bg-card shadow-sm">
+            <Card className="border border-border bg-card">
                 <CardHeader>
                     <CardTitle className="text-lg text-card-foreground">Workload by Assignee</CardTitle>
                     <CardDescription className="text-muted-foreground">Task distribution across team members</CardDescription>
@@ -450,7 +454,7 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
             </Card>
 
             {/* Priority Distribution */}
-            <Card className="border-none bg-card shadow-sm">
+            <Card className="border border-border bg-card">
                 <CardHeader>
                     <CardTitle className="text-lg text-card-foreground">Priority Distribution</CardTitle>
                     <CardDescription className="text-muted-foreground">Tasks grouped by priority level</CardDescription>

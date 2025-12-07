@@ -72,18 +72,18 @@ export default function GoalsPage() {
     };
 
     return (
-        <div className="h-screen w-full flex flex-col">
-            <div className="p-4 border-b bg-white shadow-sm z-10 flex justify-between items-center">
+        <div className="h-screen w-full flex flex-col bg-background">
+            <div className="p-4 border-b border-border bg-card shadow-sm z-10 flex justify-between items-center">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-900">Strategic Roadmap</h1>
-                    <p className="text-sm text-gray-500">Visualizing the path from tasks to goals</p>
+                    <h1 className="text-xl font-bold text-foreground">Strategic Roadmap</h1>
+                    <p className="text-sm text-muted-foreground">Visualizing the path from tasks to goals</p>
                 </div>
                 <Button onClick={() => setIsModalOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Goal
                 </Button>
             </div>
-            <div className="flex-1 bg-gray-50">
+            <div className="flex-1 bg-background">
                 <GoalHierarchy
                     key={refreshKey}
                     onEditGoal={handleEditGoal}

@@ -21,7 +21,7 @@ export function Sidebar() {
     const { user, signOut } = useAuthStore();
 
     return (
-        <div className="flex h-full w-64 flex-col bg-sidebar border-r border-sidebar-border">
+        <div className="flex h-full w-[280px] flex-col bg-sidebar border-r border-sidebar-border">
             {/* Logo */}
             <div className="flex h-16 items-center px-6">
                 <div className="flex items-center gap-2 font-bold text-xl text-sidebar-foreground">
@@ -34,13 +34,13 @@ export function Sidebar() {
 
             {/* New Deal Button */}
             <div className="px-4 py-4">
-                <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
+                <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-md shadow-primary/20">
                     + New Deal
                 </Button>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 space-y-1 px-2 py-4">
+            <nav className="flex-1 space-y-1 px-3 py-4">
                 {navigation.map((item) => {
                     const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
                     return (
@@ -48,15 +48,15 @@ export function Sidebar() {
                             key={item.name}
                             href={item.href}
                             className={cn(
-                                'group flex items-center px-4 py-3 text-sm font-medium rounded-md transition-colors',
+                                'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
                                 isActive
-                                    ? 'bg-sidebar-accent text-primary border-l-2 border-primary'
-                                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-white'
+                                    ? 'bg-sidebar-accent text-primary shadow-sm'
+                                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-white'
                             )}
                         >
                             <item.icon
                                 className={cn(
-                                    'mr-3 h-5 w-5 flex-shrink-0',
+                                    'mr-3 h-5 w-5 flex-shrink-0 transition-colors',
                                     isActive ? 'text-primary' : 'text-sidebar-foreground group-hover:text-white'
                                 )}
                             />
