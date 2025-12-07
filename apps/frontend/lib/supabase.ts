@@ -1,21 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
-}
+// Check if Supabase environment variables are configured
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable');
-}
+// Use mock mode if env vars are missing or contain placeholder values
+const isMock = !supabaseUrl ||
+  !supabaseAnonKey ||
+  supabaseUrl.includes('your-project') ||
+  supabaseAnonKey.includes('your-anon-key');
 
-// Create Supabase client for browser environment
-// Check if using placeholder values
-const isMock = process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project') ||
-               process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes('your-anon-key');
-
+// Create Supabase client or mock client for development
 export const supabase = isMock ? createMockClient() : createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  supabaseUrl!,
+  supabaseAnonKey!,
   {
     auth: {
       autoRefreshToken: true,

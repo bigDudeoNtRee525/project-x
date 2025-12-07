@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth';
-import { LogOut, Menu, Calendar, ListTodo, Users, Upload } from 'lucide-react';
+import { LogOut, Menu, Calendar, ListTodo, Users, Upload, Target } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -55,6 +55,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <ListTodo className="h-4 w-4" />
                   <span>Tasks</span>
                 </Link>
+                <Link href="/planning" className="text-gray-700 hover:text-gray-900 font-medium flex items-center space-x-1">
+                  <Target className="h-4 w-4" />
+                  <span>Planning</span>
+                </Link>
                 <Link href="/meetings" className="text-gray-700 hover:text-gray-900 font-medium flex items-center space-x-1">
                   <Upload className="h-4 w-4" />
                   <span>Meetings</span>
@@ -67,7 +71,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-700">
-                <span className="font-medium">{user?.name || user?.email}</span>
+                <span className="font-medium">{user?.name || user?.email || 'Demo User'}</span>
               </div>
               <Button variant="outline" size="sm" onClick={handleSignOut} className="flex items-center space-x-1">
                 <LogOut className="h-4 w-4" />
