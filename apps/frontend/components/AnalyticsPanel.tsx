@@ -356,10 +356,10 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
                         <CardDescription className="text-muted-foreground">Distribution of tasks by current status</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-center justify-center gap-8">
+                        <div className="h-[300px] flex items-center justify-center gap-12">
                             {/* SVG Donut Chart */}
                             <div className="relative">
-                                <svg width="140" height="140" viewBox="0 0 140 140">
+                                <svg width="200" height="200" viewBox="0 0 200 200">
                                     {(() => {
                                         const total = Object.values(analytics.statusCounts).reduce((a, b) => a + b, 0) || 1;
                                         let startAngle = -90;
@@ -376,14 +376,14 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
                                             const angle = (count / total) * 360;
                                             const endAngle = startAngle + angle;
 
-                                            // SVG arc path
-                                            const x1 = 70 + 50 * Math.cos((startAngle * Math.PI) / 180);
-                                            const y1 = 70 + 50 * Math.sin((startAngle * Math.PI) / 180);
-                                            const x2 = 70 + 50 * Math.cos((endAngle * Math.PI) / 180);
-                                            const y2 = 70 + 50 * Math.sin((endAngle * Math.PI) / 180);
+                                            // SVG arc path - center at 100,100, radius 70
+                                            const x1 = 100 + 70 * Math.cos((startAngle * Math.PI) / 180);
+                                            const y1 = 100 + 70 * Math.sin((startAngle * Math.PI) / 180);
+                                            const x2 = 100 + 70 * Math.cos((endAngle * Math.PI) / 180);
+                                            const y2 = 100 + 70 * Math.sin((endAngle * Math.PI) / 180);
                                             const largeArc = angle > 180 ? 1 : 0;
 
-                                            const path = count > 0 ? `M 70 70 L ${x1} ${y1} A 50 50 0 ${largeArc} 1 ${x2} ${y2} Z` : '';
+                                            const path = count > 0 ? `M 100 100 L ${x1} ${y1} A 70 70 0 ${largeArc} 1 ${x2} ${y2} Z` : '';
                                             startAngle = endAngle;
 
                                             return path ? (
@@ -396,27 +396,27 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
                                             ) : null;
                                         });
                                     })()}
-                                    <circle cx="70" cy="70" r="30" fill="var(--card)" />
+                                    <circle cx="100" cy="100" r="45" fill="var(--card)" />
                                 </svg>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-xl font-bold text-card-foreground">{analytics.totalTasks}</span>
+                                    <span className="text-2xl font-bold text-card-foreground">{analytics.totalTasks}</span>
                                 </div>
                             </div>
 
                             {/* Legend */}
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                                 {[
                                     { key: 'completed', label: 'Completed', color: 'bg-[var(--chart-2)]' },
                                     { key: 'in_progress', label: 'In Progress', color: 'bg-[var(--chart-3)]' },
                                     { key: 'pending', label: 'Pending', color: 'bg-[var(--chart-1)]' },
                                     { key: 'cancelled', label: 'Cancelled', color: 'bg-muted-foreground' },
                                 ].map(({ key, label, color }) => (
-                                    <div key={key} className="flex items-center gap-2 text-sm">
+                                    <div key={key} className="flex items-center gap-3 text-sm">
                                         <div
-                                            className={`w-3 h-3 rounded-full ${color}`}
+                                            className={`w-4 h-4 rounded-full ${color}`}
                                         />
-                                        <span className="text-muted-foreground">{label}</span>
-                                        <span className="font-medium ml-auto text-card-foreground">{analytics.statusCounts[key] || 0}</span>
+                                        <span className="text-muted-foreground min-w-[90px]">{label}</span>
+                                        <span className="font-semibold text-lg text-card-foreground">{analytics.statusCounts[key] || 0}</span>
                                     </div>
                                 ))}
                             </div>

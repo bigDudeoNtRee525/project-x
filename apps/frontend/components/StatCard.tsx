@@ -15,6 +15,7 @@ interface StatCardProps {
     description?: string;
     color?: 'primary' | 'success' | 'blue' | 'purple' | 'orange';
     className?: string;
+    onIconClick?: () => void;
 }
 
 export function StatCard({
@@ -25,6 +26,7 @@ export function StatCard({
     description,
     color = 'primary',
     className,
+    onIconClick,
 }: StatCardProps) {
     // Map legacy colors to GlassIcon variants
     const variantMap: Record<string, "gold" | "green" | "blue" | "purple" | "orange"> = {
@@ -42,9 +44,14 @@ export function StatCard({
             <CardContent className="pt-5">
                 <div className="flex justify-between items-start mb-4">
                     <span className="text-sm font-medium text-muted-foreground">{title}</span>
-                    <GlassIcon variant={variant}>
-                        <Icon className="h-4 w-4" />
-                    </GlassIcon>
+                    <div
+                        onClick={onIconClick}
+                        className={onIconClick ? 'cursor-pointer transition-transform hover:scale-110' : ''}
+                    >
+                        <GlassIcon variant={variant}>
+                            <Icon className="h-4 w-4" />
+                        </GlassIcon>
+                    </div>
                 </div>
                 <div className="flex flex-col gap-1">
                     <div className="text-[28px] font-bold text-white mb-1">{value}</div>

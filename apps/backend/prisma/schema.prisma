@@ -67,7 +67,7 @@ model Meeting {
 // Tasks (action items)
 model Task {
   id            String   @id @default(uuid())
-  meetingId     String   @map("meeting_id")
+  meetingId     String?  @map("meeting_id")
   userId        String   @map("user_id")
   title         String   @default("")
   description   String   @db.Text
@@ -83,7 +83,7 @@ model Task {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relations
-  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  meeting Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   assignee Contact? @relation("assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)

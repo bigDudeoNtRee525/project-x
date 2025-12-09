@@ -17,6 +17,7 @@ import { ExportReportModal } from '@/components/ExportReportModal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { StatCard } from '@/components/StatCard';
 import { UserTasksModal } from '@/components/UserTasksModal';
+import { StatTasksModal, StatType } from '@/components/StatTasksModal';
 import type { TaskWithRelations, Contact } from '@meeting-task-tool/shared';
 
 // Status display mapping
@@ -48,6 +49,9 @@ export default function DashboardPage() {
   const [selectedTask, setSelectedTask] = useState<TaskWithRelations | null>(null);
   const [userTasksModalOpen, setUserTasksModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [statTasksModalOpen, setStatTasksModalOpen] = useState(false);
+  const [selectedStatType, setSelectedStatType] = useState<StatType | null>(null);
+  const [returnToModal, setReturnToModal] = useState<'stat' | 'user' | null>(null);
 
   // Bulk selection state
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
@@ -124,6 +128,19 @@ export default function DashboardPage() {
   const handleTaskClick = (task: TaskWithRelations) => {
     setSelectedTask(task);
     setEditModalOpen(true);
+  };
+
+  const handleEditModalClose = (open: boolean) => {
+    setEditModalOpen(open);
+    if (!open && returnToModal) {
+      // Reopen the modal we came from
+      if (returnToModal === 'stat') {
+        setStatTasksModalOpen(true);
+      } else if (returnToModal === 'user') {
+        setUserTasksModalOpen(true);
+      }
+      setReturnToModal(null);
+    }
   };
 
   // Bulk selection handlers
@@ -255,6 +272,35 @@ export default function DashboardPage() {
       };
     });
 
+  // Filter tasks by stat type for modal
+  const getTasksForStatType = (type: StatType): TaskWithRelations[] => {
+    switch (type) {
+      case 'totalTasks':
+        return tasks;
+      case 'pendingReview':
+        return tasks.filter((t) => !t.reviewed);
+      case 'upcomingDeadlines':
+        return tasks.filter((t) => {
+          if (!t.deadline) return false;
+          const deadline = new Date(t.deadline);
+          const now = new Date();
+          const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          return deadline >= now && deadline <= weekFromNow;
+        });
+      case 'completed':
+        return tasks.filter((t) => t.status === 'completed');
+      case 'recentActivity':
+        return [...tasks].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+      default:
+        return [];
+    }
+  };
+
+  const handleStatIconClick = (type: StatType) => {
+    setSelectedStatType(type);
+    setStatTasksModalOpen(true);
+  };
+
   const isAllSelected = filteredTasks.length > 0 && selectedTaskIds.size === filteredTasks.length;
   const isSomeSelected = selectedTaskIds.size > 0 && selectedTaskIds.size < filteredTasks.length;
 
@@ -281,6 +327,7 @@ export default function DashboardPage() {
           icon={List}
           color="blue"
           trend={{ value: Math.abs(createdTrend), label: "vs last month", positive: createdTrend >= 0 }}
+          onIconClick={() => handleStatIconClick('totalTasks')}
         />
         <StatCard
           title="Pending Review"
@@ -288,6 +335,7 @@ export default function DashboardPage() {
           icon={CheckCircle2}
           color="purple"
           description="Tasks needing attention"
+          onIconClick={() => handleStatIconClick('pendingReview')}
         />
         <StatCard
           title="Upcoming Deadlines"
@@ -295,6 +343,7 @@ export default function DashboardPage() {
           icon={Clock}
           color="orange"
           trend={{ value: urgentTasks, label: "urgent tasks", positive: false }}
+          onIconClick={() => handleStatIconClick('upcomingDeadlines')}
         />
         <StatCard
           title="Completed"
@@ -302,6 +351,7 @@ export default function DashboardPage() {
           icon={TrendingUp}
           color="success"
           trend={{ value: Math.abs(completedTrend), label: "vs last month", positive: completedTrend >= 0 }}
+          onIconClick={() => handleStatIconClick('completed')}
         />
       </div>
 
@@ -309,14 +359,33 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card className="border border-border bg-card">
           <CardHeader>
-            <CardTitle>Activity Overview</CardTitle>
-            <CardDescription>Recent updates and actions</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Activity Overview</CardTitle>
+                <CardDescription>Recent updates and actions</CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => handleStatIconClick('recentActivity')}
+              >
+                View All
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {recentActivity.length > 0 ? (
                 recentActivity.map(activity => (
-                  <div key={activity.id} className="flex gap-3">
+                  <div
+                    key={activity.id}
+                    className="flex gap-3 cursor-pointer hover:bg-accent/50 p-2 -mx-2 rounded-md transition-colors"
+                    onClick={() => {
+                      const task = tasks.find(t => t.id === activity.id);
+                      if (task) handleTaskClick(task);
+                    }}
+                  >
                     <div className={`h-2 w-2 mt-2 rounded-full ${activity.color}`} />
                     <div>
                       <p className="text-sm font-medium text-foreground line-clamp-1">{activity.text}</p>
@@ -591,7 +660,7 @@ export default function DashboardPage() {
       <TaskEditModal
         task={selectedTask}
         open={editModalOpen}
-        onOpenChange={setEditModalOpen}
+        onOpenChange={handleEditModalClose}
         onSuccess={loadTasks}
       />
       <CalendarExportModal
@@ -612,6 +681,18 @@ export default function DashboardPage() {
         tasks={tasks.filter(t => t.assigneeId === selectedContact?.id)}
         onTaskClick={(task) => {
           setUserTasksModalOpen(false);
+          setReturnToModal('user');
+          handleTaskClick(task);
+        }}
+      />
+      <StatTasksModal
+        open={statTasksModalOpen}
+        onOpenChange={setStatTasksModalOpen}
+        statType={selectedStatType}
+        tasks={selectedStatType ? getTasksForStatType(selectedStatType) : []}
+        onTaskClick={(task) => {
+          setStatTasksModalOpen(false);
+          setReturnToModal('stat');
           handleTaskClick(task);
         }}
       />

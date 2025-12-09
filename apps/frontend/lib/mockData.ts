@@ -279,6 +279,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     // Tasks from Meeting 1: Q4 Product Planning
     {
         id: 'task-1',
+        title: 'Optimize database queries',
         meetingId: 'meeting-1',
         userId: 'mock-user',
         description: 'Optimize database queries for improved performance',
@@ -302,6 +303,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-2',
+        title: 'Deliver dashboard redesign mockups',
         meetingId: 'meeting-1',
         userId: 'mock-user',
         description: 'Deliver dashboard redesign mockups',
@@ -321,6 +323,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-3',
+        title: 'Set up performance testing suite',
         meetingId: 'meeting-1',
         userId: 'mock-user',
         description: 'Set up performance testing suite',
@@ -340,6 +343,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-4',
+        title: 'Review API architecture',
         meetingId: 'meeting-1',
         userId: 'mock-user',
         description: 'Review API architecture and propose improvements',
@@ -360,6 +364,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     // Tasks from Meeting 2: Sprint Retrospective
     {
         id: 'task-5',
+        title: 'Create documentation templates',
         meetingId: 'meeting-2',
         userId: 'mock-user',
         description: 'Create documentation templates for the team',
@@ -378,6 +383,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-6',
+        title: 'Set up automated code review checks',
         meetingId: 'meeting-2',
         userId: 'mock-user',
         description: 'Set up automated code review checks',
@@ -396,6 +402,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-7',
+        title: 'Analyze sprint velocity metrics',
         meetingId: 'meeting-2',
         userId: 'mock-user',
         description: 'Analyze sprint velocity metrics and create report',
@@ -416,6 +423,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     // Tasks from Meeting 3: Client Feedback
     {
         id: 'task-8',
+        title: 'Create timeline estimates',
         meetingId: 'meeting-3',
         userId: 'mock-user',
         description: 'Create timeline estimates for export functionality',
@@ -434,6 +442,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-9',
+        title: 'Design initial mockups for dark mode',
         meetingId: 'meeting-3',
         userId: 'mock-user',
         description: 'Design initial mockups for dark mode theme',
@@ -452,6 +461,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-10',
+        title: 'Evaluate mobile app feasibility',
         meetingId: 'meeting-3',
         userId: 'mock-user',
         description: 'Evaluate mobile app feasibility and create proposal',
@@ -472,6 +482,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     // Tasks from Meeting 4: Technical Architecture
     {
         id: 'task-11',
+        title: 'Create microservices architecture diagram',
         meetingId: 'meeting-4',
         userId: 'mock-user',
         description: 'Create microservices architecture diagram',
@@ -491,6 +502,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-12',
+        title: 'POC Kubernetes cluster setup',
         meetingId: 'meeting-4',
         userId: 'mock-user',
         description: 'POC Kubernetes cluster setup for microservices',
@@ -510,6 +522,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-13',
+        title: 'Define testing strategy',
         meetingId: 'meeting-4',
         userId: 'mock-user',
         description: 'Define testing strategy for microservices architecture',
@@ -530,6 +543,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     // Tasks from Meeting 5: Weekly Standup
     {
         id: 'task-14',
+        title: 'Provide engineering input',
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Provide engineering input for Q1 roadmap',
@@ -548,6 +562,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-15',
+        title: 'Complete API optimization work',
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Complete API optimization work',
@@ -566,6 +581,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-16',
+        title: 'Review database migration scripts',
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Review database migration scripts',
@@ -584,6 +600,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-17',
+        title: 'Demo dashboard analytics',
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Demo dashboard analytics to stakeholders',
@@ -602,6 +619,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
     },
     {
         id: 'task-18',
+        title: 'Finalize design system updates',
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Finalize design system updates',

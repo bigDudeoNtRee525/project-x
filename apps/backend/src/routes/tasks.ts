@@ -16,6 +16,65 @@ const updateTaskSchema = z.object({
   reviewed: z.boolean().optional(),
 });
 
+// Validation schema for creating a task
+const createTaskSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  assigneeId: z.string().uuid().optional().nullable(),
+  deadline: z.string().datetime().optional().nullable(),
+  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).default('pending'),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  goalId: z.string().uuid().optional().nullable(),
+  categoryId: z.string().uuid().optional().nullable(),
+  meetingId: z.string().uuid().optional().nullable(),
+});
+
+// Create a new task
+router.post('/', optionalAuthenticate, async (req, res) => {
+  try {
+    const data = createTaskSchema.parse(req.body);
+    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+
+    const newTask = await prisma.task.create({
+      data: {
+        description: data.description,
+        assigneeId: data.assigneeId ?? undefined,
+        deadline: data.deadline ? new Date(data.deadline) : undefined,
+        status: data.status,
+        priority: data.priority,
+        goalId: data.goalId ?? undefined,
+        categoryId: data.categoryId ?? undefined,
+        meetingId: data.meetingId ?? undefined,
+        userId,
+        reviewed: true, // Manually created tasks are considered reviewed
+        aiExtracted: false, // Not AI-extracted
+      },
+      include: {
+        meeting: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return res.status(201).json({ task: newTask });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    console.error('Error creating task:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // List tasks with filters
 router.get('/', optionalAuthenticate, async (req, res) => {
 
