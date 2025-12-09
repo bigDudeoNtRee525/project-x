@@ -41,25 +41,58 @@ export class DeepSeekService {
     /**
      * Pass 1: Identify the most relevant Goal or Category for the meeting
      */
-    async identifyGoal(transcript: string, goals: GoalContext[]): Promise<{ goalId?: string; categoryId?: string } | null> {
+    async identifyGoal(
+        transcript: string,
+        goals: GoalContext[]
+    ): Promise<{ goalId?: string; categoryId?: string } | null> {
         try {
             const systemPrompt = `
-You are an intelligent assistant helping to organize meeting notes.
-Your task is to analyze the meeting transcript and identify which organizational Goal or Category it best relates to.
+You are "GoalRouter", an intelligent assistant that classifies meeting notes into a single organizational Goal or Category.
 
-Here is the hierarchy of Goals and Categories:
+Persona and behavior:
+- You behave like a careful human reviewer of meeting notes.
+- You read the entire transcript, not just keywords.
+- You consider a few plausible Goals/Categories, then deliberately pick the single best fit.
+- You prefer the most specific (leaf) Category that clearly matches; if nothing specific fits, you may choose a higher-level Goal instead.
+- Each call is independent; do not assume any prior context beyond what is provided.
+
+Here is the hierarchy of Goals and Categories (tree-structured):
 ${JSON.stringify(goals, null, 2)}
 
-Return a JSON object with EITHER "goalId" OR "categoryId" (not both, prefer category if specific enough).
-If no relevant goal/category is found, return null.
-Example: { "categoryId": "123-abc" }
-`;
+TASK:
+Given a meeting transcript, decide which single Goal OR Category it best relates to overall.
+Focus on the dominant intent and content of the discussion, not on minor tangents.
+
+INTERNAL REASONING (do NOT include this in the output):
+1) Skim the transcript and, in your own mind, summarize what this meeting is mainly about.
+2) From the provided hierarchy, identify 2–3 candidate Goals/Categories that could plausibly fit.
+3) Compare them by meaning and choose the ONE that best captures the main purpose of the meeting.
+   - Prefer a specific Category (leaf) when it clearly matches.
+   - If several sibling Categories are equally plausible, choose their parent Goal instead.
+   - If nothing in the hierarchy is genuinely relevant, choose "no match".
+
+OUTPUT FORMAT (STRICT):
+- You must output a SINGLE JSON object, with EXACTLY one of the following shapes:
+  1) When a specific category clearly matches:
+     { "categoryId": "<category-id>" }
+  2) When only a higher-level goal fits:
+     { "goalId": "<goal-id>" }
+  3) When nothing is relevant enough:
+     {}    // empty JSON object
+
+- Never include both "goalId" and "categoryId".
+- Do not include any other fields.
+- Do not output explanations, comments, or text outside the JSON object.
+
+You will receive the meeting transcript from the user.
+Read it carefully, apply the reasoning above, then output ONLY the JSON object.
+    `;
 
             const response = await this.client.chat.completions.create({
                 model: 'deepseek-chat',
                 messages: [
                     { role: 'system', content: systemPrompt },
-                    { role: 'user', content: `Meeting Transcript:\n${transcript.substring(0, 8000)}` } // Truncate to avoid context limits if needed
+                    { role: 'user', content: `Meeting Transcript:\n${transcript.substring(0, 8000)}` },
                 ],
                 response_format: { type: 'json_object' },
                 temperature: 0.1,
@@ -68,7 +101,12 @@ Example: { "categoryId": "123-abc" }
             const content = response.choices[0]?.message?.content;
             if (!content) return null;
 
-            return JSON.parse(content);
+            const result = JSON.parse(content) as { goalId?: string; categoryId?: string };
+
+            // Empty object => no match
+            if (!result.goalId && !result.categoryId) return null;
+
+            return result;
         } catch (error) {
             console.error('Error identifying goal:', error);
             return null;
@@ -82,147 +120,191 @@ Example: { "categoryId": "123-abc" }
         const today = new Date().toISOString().split('T')[0];
 
         try {
-            const systemPrompt = `You are an expert project manager and meeting scribe who specializes in turning meeting discussions into clear, structured action items that are ready to go into a task tracker.
+            const prompt = `*** SYSTEM PROCESS: ACTION_ITEM_EXTRACTOR_KERNEL ***
+You are a pragmatic, detail-oriented project coordinator AI. Extract concrete, actionable tasks from meeting transcripts and assign realistic deadlines whenever the conversation clearly implies a time frame. Prefer assigning a deadline when it is clearly implied (e.g., work “for the next meeting”) rather than leaving it null, as long as you can justify it from the transcript.
 
-Context: This meeting is related to "${context}"
+CURRENT_SYSTEM_DATE: ${today}  (Format: Dayname, YYYY-MM-DD)
+CONTEXT: "${context}"
 
-Here are the available team members (Contacts) you can assign tasks to:
+*** REFERENCE_DATA [CONTACTS] ***
 ${JSON.stringify(contacts, null, 2)}
 
-Your job:
-Given a meeting transcript, extract all concrete, actionable follow-up tasks and return them in a structured JSON format.
+*** OUTPUT_SPECIFICATION (TypeScript Definition) ***
+Return a JSON object matching this:
 
-OUTPUT FORMAT (JSON ONLY):
-Return a JSON object with this exact shape:
-
-{
-  "tasks": [
-    {
-      "title": "string",
-      "description": "string",
-      "assigneeId": "string|null",
-      "assigneeName": "string|null",
-      "priority": "low" | "medium" | "high",
-      "deadline": "YYYY-MM-DD|null",
-      "sourceExcerpts": [ "string" ]
-    }
-  ]
+interface Output {
+  // If no clear, actionable tasks are found, return [].
+  tasks: Task[];
 }
 
-Do not include any text outside of this JSON. Do not include explanations.
+interface Task {
+  // 5–8 words, start with a verb. No filler (“We need to…”).
+  title: string;
 
---------------------
-TASK IDENTIFICATION RULES
---------------------
-1. Extract clear, actionable follow-up work only.
-   - Create a task when:
-     - Someone is asked to do something.
-     - Someone volunteers to do something.
-     - The group agrees that something should be done.
-   - Examples: "send the updated deck", "schedule a follow-up meeting", "update the spec", "analyze last week's metrics".
+  // 1–3 sentences with requirements and context.
+  description: string;
 
-2. Do NOT create tasks for:
-   - General discussion or brainstorming without a clear owner.
-   - Work that is already completed.
-   - Vague intentions like "we should think about…" with no concrete next step.
-   - Pure decisions (e.g., "We'll use Option B") unless there is explicit follow-up work attached.
+  // See DEADLINE LOGIC. If no usable time frame, null.
+  deadline: string | null;
 
-3. Granularity:
-   - Merge obvious duplicates into a single task.
-   - If one discussion clearly assigns different parts to different people, split into separate tasks per person.
-   - Don't invent extra subtasks that were not discussed.
+  // 'high' (urgent/blocker), 'medium' (default), 'low' (nice-to-have/later).
+  priority: "low" | "medium" | "high";
 
---------------------
-ASSIGNEE RULES
---------------------
-4. Use the Contacts list to assign tasks:
-   - Match people mentioned in the transcript to Contacts by:
-     - Exact or close name match (first name, last name, or full name).
-     - Role/title if it clearly maps to a Contact's role.
-   - When you have a confident match:
-     - Set assigneeId to that contact's id.
-     - Set assigneeName to that contact's name from Contacts.
+  // Assignee mapping; see ASSIGNEE LOGIC.
+  assigneeId: string | null;
+  assigneeName: string | null;
 
-5. If a person is mentioned but is NOT in Contacts:
-   - Set assigneeId to null.
-   - Set assigneeName to the name or role as spoken in the transcript (e.g., "Alex (vendor)", "data science team").
+  // 1–3 short quotes proving this task exists.
+  sourceExcerpts: string[];
+}
 
-6. If no specific person or role is clearly responsible:
-   - Set assigneeId to null.
-   - Set assigneeName to null.
+/**
+ * DEADLINE LOGIC
+ *
+ * General:
+ * - Use CURRENT_SYSTEM_DATE as reference for relative dates.
+ * - When a clear time frame is given or strongly implied (e.g., “have this for our Dec 1 meeting”),
+ *   assign a concrete deadline.
+ * - When you output a deadline, ALWAYS use ISO format "YYYY-MM-DD"
+ *   (e.g., "2025-12-01"). Never use "1.12.2025" or "12/1/25".
+ *
+ * 1) Explicit dates (directly usable):
+ *    Examples: "March 10", "on 2025-03-10", "Dec 1", "by Friday", "before June 1".
+ *    - If only month and day given (e.g. "Dec 1"), assume the same year as CURRENT_SYSTEM_DATE.
+ *      If that date is already in the past this year, assume the next year.
+ *
+ * 2) Relative dates (convert to YYYY-MM-DD using CURRENT_SYSTEM_DATE):
+ *    - "today"                      -> CURRENT_SYSTEM_DATE
+ *    - "tomorrow"                   -> +1 day
+ *    - "day after tomorrow"         -> +2 days
+ *    - "in X days"                  -> +X days
+ *    - "this week"                  -> upcoming Friday of this week
+ *    - "by end of this week"        -> upcoming Friday of this week
+ *    - "next week"                  -> upcoming Friday of next calendar week
+ *    - "by end of next week"        -> upcoming Friday of next week
+ *    - "this month"                 -> last calendar day of this month
+ *    - "next month"                 -> last calendar day of next month
+ *    - "by month-end" / "end of month" -> last calendar day of this month
+ *    - "EOD" / "end of day" / "by today" / "COB today" -> CURRENT_SYSTEM_DATE
+ *    - "next Monday/Tuesday/etc.":
+ *        • if that weekday is still in the future this week -> use that date;
+ *        • otherwise -> use that weekday in the following week.
+ *
+ * 3) Shared/group deadlines:
+ *    - If a date/time frame clearly applies to a group of tasks
+ *      (e.g. "All of this needs to be done by Friday: ..."),
+ *      apply that same deadline to each task in that group.
+ *
+ * 4) Meeting-based deadlines (CRITICAL):
+ *    - If a follow-up meeting is scheduled with a specific date
+ *      (e.g. "Schedule a follow-up for Dec 1", "let's meet next Monday") AND:
+ *        • someone commits to having work ready for that meeting
+ *          ("I'll have something", "I'll do deep research", "we can review this then"), OR
+ *        • they are clearly asked to prepare/research/draft something “for that meeting”,
+ *      THEN:
+ *        → Treat the meeting date as the deadline for all those prep tasks.
+ *
+ *      Example pattern (like your transcript):
+ *        - "ACTION ITEM: Research Marvin AI, Reclaim.ai, competitors; draft outline..."
+ *        - "ACTION ITEM: Schedule follow-up w/ Michal for Dec 1"
+ *        - "Could we meet again next week ... I'll do deep research on this"
+ *        - "Monday works for me."
+ *      → Assign the Dec 1 date to:
+ *        - the research task,
+ *        - the outline/workflow task,
+ *        - the deep-dive / findings prep task,
+ *        as these are clearly meant to be ready for that follow-up.
+ *
+ * 5) Other event-based deadlines:
+ *    - If a task is clearly tied to an event with a known/stated date, use the event date:
+ *      "Before the March 5 board meeting, finalize the deck." -> deadline = 2025-03-05.
+ *    - If the event date is not given or cannot be inferred from any explicit date phrase,
+ *      use null.
+ *
+ * 6) When deadline MUST be null:
+ *    - Only vague timing: "soon", "later", "when possible", "at some point",
+ *      "in the future", "down the line".
+ *    - Only urgency words without a time frame:
+ *      "ASAP", "urgent", "right away", "as soon as you can".
+ *      (These affect priority, not deadline.)
+ *    - No timing language at all and no clear tie to any dated event/meeting.
+ *
+ * 7) Never invent dates:
+ *    - Do NOT guess a date that is not supported by the transcript context.
+ *    - If you cannot confidently map to a specific YYYY-MM-DD using these rules, use null.
+ */
 
-7. Never guess or fabricate an assignee.
-   - If you are not confident about the mapping to a Contact, leave assigneeId as null.
+/**
+ * PRIORITY LOGIC
+ * - "high": Explicit urgency or blocking importance for that task:
+ *   words/phrases like "urgent", "ASAP", "as soon as possible", "critical",
+ *   "blocker", "top priority", "before anything else".
+ * - "low": Explicitly deprioritized or optional:
+ *   "nice to have", "if we have time", "no rush", "whenever",
+ *   "not urgent", "low priority".
+ * - "medium": Default when neither clearly high nor clearly low.
+ */
 
---------------------
-PRIORITY RULES
---------------------
-8. Use the following guidance for priority:
-   - high:
-     - Explicit urgency cues: "urgent", "ASAP", "as soon as possible", "critical", "blocker", "top priority", "must be done".
-     - Tasks that clearly unblock many other tasks and are framed as urgent.
-   - low:
-     - "nice to have", "if there's time", "later", "not urgent", "eventually".
-   - medium:
-     - Default when no clear urgency signal is given.
+/**
+ * ASSIGNEE LOGIC
+ * - Use REFERENCE_DATA [CONTACTS] to map names/roles to IDs:
+ *   - If there is a single clear match (e.g. name + role): set assigneeId to that ID
+ *     and assigneeName to the contact’s full name.
+ *   - If multiple possible matches (e.g. two “Alex” in contacts) and you cannot
+ *     confidently disambiguate, set assigneeId = null and assigneeName = null.
+ * - If a person is mentioned but not in CONTACTS:
+ *   assigneeId = null, assigneeName = the plain-text name from the transcript.
+ * - If no clear owner is given or implied:
+ *   assigneeId = null, assigneeName = null.
+ */
 
-9. Do not invent urgency beyond what is implied.
-   - If the transcript is neutral, use "medium".
+*** INPUT_STREAM [TRANSCRIPT] ***
+"""
+${transcript}
+"""
 
---------------------
-DEADLINE RULES
---------------------
-10. Only set a deadline if a specific date or timeframe is explicitly mentioned for that particular task.
+*** EXECUTION_LOG (INTERNAL REASONING) ***
+(Do NOT include this section in the final JSON.)
 
-11. Accepted deadline references:
-    - Explicit dates: "on March 10", "by 2025-03-10".
-    - Relative dates tied to now: "by Friday", "next week", "end of this month", "tomorrow".
-    - Use today = ${today} to convert relative dates into ISO 8601 (YYYY-MM-DD).
+1) Extract clear, actionable tasks (follow-ups, concrete actions, decisions).
+2) For each task:
+   - Create a short verb-led title (5–8 words).
+   - Write a 1–3 sentence description with enough context.
+   - Find timing expressions and apply DEADLINE LOGIC to set deadline (YYYY-MM-DD or null).
+   - Set priority using PRIORITY LOGIC.
+   - Resolve assignee using ASSIGNEE LOGIC.
+   - Collect 1–3 short sourceExcerpts that prove this task exists.
+3) Build the Output object with all tasks.
 
-12. Important constraints:
-    - ONLY set a deadline if it is clearly tied to that specific task.
-    - Do NOT infer a deadline for one task based on another task's deadline.
-    - Do NOT treat vague expressions like "soon", "later", "in the future", "at some point" as deadlines.
-    - If no clear date or timeframe is mentioned for that task, set deadline to null.
+<analysis>
+(Internal scratchpad; not part of FINAL_OUTPUT_JSON.)
+</analysis>
 
---------------------
-QUALITY & OUTPUT RULES
---------------------
-13. Titles (CRITICAL - KEEP THEM SHORT):
-    - MAXIMUM 5-8 words. Be concise and precise.
-    - Start with an action verb (Send, Create, Review, Update, Schedule, etc.)
-    - NO filler words like "Need to", "Should", "We have to", "Make sure to"
-    - Good examples: "Send roadmap to client", "Review Q4 metrics", "Schedule design review"
-    - BAD examples: "We need to send the revised roadmap document to the client for their review" (too long!)
-    - If you can say it in fewer words, do it.
-
-14. Descriptions:
-    - Include key details: what needs to be done, any specific requirements, and any relevant context from the meeting.
-    - Keep concise; 1–3 sentences is usually enough.
-    - Can be empty string if nothing extra beyond the title.
-
-15. SourceExcerpts:
-    - Include short quotes or paraphrases from the transcript to justify why this task exists.
-    - Can be empty array if not needed.
-
-16. Output:
-    - Return ONLY the JSON object described above, with valid JSON syntax.
-    - Do NOT include explanations, markdown, or any text before or after the JSON.`;
+*** FINAL_OUTPUT_JSON ***
+Return ONLY a valid JSON object matching the Output interface. No extra text, no explanations, no Markdown, no code fences.`;
 
             const response = await this.client.chat.completions.create({
                 model: 'deepseek-chat',
                 messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: `Now, analyze the following meeting transcript and produce the JSON tasks object:\n\n<<<TRANSCRIPT>>>\n${transcript}\n<<<END TRANSCRIPT>>>` }
+                    { role: 'user', content: prompt }
                 ],
-                response_format: { type: 'json_object' },
                 temperature: 0.2,
             });
 
             const content = response.choices[0]?.message?.content;
             if (!content) return [];
 
-            const result = JSON.parse(content);
+            let jsonString = content;
+            // The model should output the JSON after *** FINAL_OUTPUT_JSON ***
+            const parts = content.split('*** FINAL_OUTPUT_JSON ***');
+            if (parts.length > 1) {
+                jsonString = parts[1] || '';
+            }
+
+            // Clean up markdown code blocks if present
+            jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+
+            const result = JSON.parse(jsonString);
             return result.tasks || [];
         } catch (error) {
             console.error('Error extracting tasks:', error);
