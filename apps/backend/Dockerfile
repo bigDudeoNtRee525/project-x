@@ -24,6 +24,3 @@ EXPOSE 3001
 
 # Start application
 CMD ["npm", "run", "dev"]
-
-# Add this line to fix the Prisma/Alpine crash
-RUN apk add --no-cache compat-openssl11
