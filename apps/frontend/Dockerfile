@@ -1,4 +1,4 @@
-# Development Dockerfile for backend
+# Development Dockerfile for frontend
 FROM node:20-alpine
 
 WORKDIR /app
@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Copy workspace package files
-COPY apps/backend/package.json ./apps/backend/
+COPY apps/frontend/package.json ./apps/frontend/
 
 # Install dependencies from root
 RUN npm ci
@@ -15,12 +15,11 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Generate Prisma client
-WORKDIR /app/apps/backend
-RUN npx prisma generate
+# Set working directory to frontend
+WORKDIR /app/apps/frontend
 
 # Expose port
-EXPOSE 3001
+EXPOSE 3000
 
 # Start application
 CMD ["npm", "run", "dev"]

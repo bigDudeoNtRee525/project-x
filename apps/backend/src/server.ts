@@ -22,7 +22,7 @@ app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? ['https://yourdomain.com']
-    : ['http://localhost:3000'],
+    : true, // Allow all origins in dev mode to support remote server access
   credentials: true,
 }));
 app.use(morgan('dev'));
@@ -47,4 +47,5 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`Allowed Origins: ${process.env.NODE_ENV === 'production' ? 'Production Only' : 'All (Dev Mode)'}`);
 });
