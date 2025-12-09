@@ -31,7 +31,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { objectivesApi } from '@/lib/api';
-import { Plus, Trash2, Target, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Target, ChevronDown, ChevronUp, Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import type { YearlyObjective, QuarterlyObjective, KeyResult } from '@/lib/mockData';
 
 // Zod schemas
@@ -371,7 +375,38 @@ export function ObjectiveFormModal({
                                         <FormItem>
                                             <FormLabel>Target Date</FormLabel>
                                             <FormControl>
-                                                <Input type="date" {...field} />
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant={"outline"}
+                                                            className={cn(
+                                                                "w-full pl-3 text-left font-normal border-input shadow-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200",
+                                                                !field.value && "text-muted-foreground"
+                                                            )}
+                                                        >
+                                                            {field.value ? (
+                                                                format(new Date(field.value), "PPP")
+                                                            ) : (
+                                                                <span>Pick a date</span>
+                                                            )}
+                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0 shadow-lg rounded-xl border-border/50" align="start">
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={field.value ? new Date(field.value) : undefined}
+                                                            onSelect={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
+                                                            disabled={(date) =>
+                                                                date < new Date("1900-01-01")
+                                                            }
+                                                            captionLayout="dropdown"
+                                                            fromYear={2020}
+                                                            toYear={new Date().getFullYear() + 10}
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

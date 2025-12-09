@@ -16,6 +16,7 @@ import { CalendarExportModal } from '@/components/CalendarExportModal';
 import { ExportReportModal } from '@/components/ExportReportModal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { StatCard } from '@/components/StatCard';
+import { UserTasksModal } from '@/components/UserTasksModal';
 import type { TaskWithRelations, Contact } from '@meeting-task-tool/shared';
 
 // Status display mapping
@@ -45,6 +46,8 @@ export default function DashboardPage() {
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskWithRelations | null>(null);
+  const [userTasksModalOpen, setUserTasksModalOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   // Bulk selection state
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
@@ -336,7 +339,14 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {contacts.slice(0, 5).map(contact => (
-                <div key={contact.id} className="flex items-center justify-between">
+                <div
+                  key={contact.id}
+                  className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                  onClick={() => {
+                    setSelectedContact(contact);
+                    setUserTasksModalOpen(true);
+                  }}
+                >
                   <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
                       {contact.name.charAt(0)}
@@ -594,6 +604,16 @@ export default function DashboardPage() {
         open={reportModalOpen}
         onOpenChange={setReportModalOpen}
         tasks={tasks}
+      />
+      <UserTasksModal
+        open={userTasksModalOpen}
+        onOpenChange={setUserTasksModalOpen}
+        user={selectedContact}
+        tasks={tasks.filter(t => t.assigneeId === selectedContact?.id)}
+        onTaskClick={(task) => {
+          setUserTasksModalOpen(false);
+          handleTaskClick(task);
+        }}
       />
     </div>
   );

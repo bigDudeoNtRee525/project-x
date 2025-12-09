@@ -139,6 +139,13 @@ export const meetingsApi = {
     }
     return api.post(`/meetings/${id}/confirm-tasks`);
   },
+  reprocess: async (id: string) => {
+    if (USE_MOCK_DATA) {
+      await delay(2000);
+      return { success: true, message: 'Reprocessing started' };
+    }
+    return api.post(`/meetings/${id}/reprocess`);
+  },
 };
 
 export const tasksApi = {

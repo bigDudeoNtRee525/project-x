@@ -42,11 +42,15 @@ import {
     SelectGroup,
     SelectLabel,
 } from '@/components/ui/select';
-import { tasksApi, contactsApi, objectivesApi } from '@/lib/api';
-import { Target, Folder } from 'lucide-react';
+import { tasksApi, contactsApi, goalsApi, categoriesApi } from '@/lib/api';
+import { Target, Folder, CalendarIcon } from 'lucide-react';
 import { TaskComments, type TaskComment } from '@/components/TaskComments';
 import type { TaskWithRelations, Contact } from '@meeting-task-tool/shared';
-import { type YearlyObjective, type QuarterlyObjective, type Category, mockCategories } from '@/lib/mockData';
+import { type Category, mockCategories } from '@/lib/mockData';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const taskSchema = z.object({
     description: z.string().min(1, 'Description is required'),
@@ -54,26 +58,26 @@ const taskSchema = z.object({
     deadline: z.string().optional().nullable(),
     status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
-    quarterlyObjectiveId: z.string().optional().nullable(),
+    goalId: z.string().optional().nullable(),
     categoryId: z.string().optional().nullable(),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 interface TaskEditModalProps {
-    task: (TaskWithRelations & { quarterlyObjectiveId?: string | null; categoryId?: string | null; comments?: TaskComment[] }) | null;
+    task: (TaskWithRelations & { goalId?: string | null; categoryId?: string | null; comments?: TaskComment[] }) | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
     onCommentsChange?: (taskId: string, comments: TaskComment[]) => void;
 }
 
-// Helper to flatten quarterly objectives with parent info
-interface FlattenedObjective {
+// Helper to flatten goals with parent info
+interface FlattenedGoal {
     id: string;
     label: string;
-    yearlyTitle: string;
-    quarter: number;
+    parentTitle: string;
+    type: string;
 }
 
 export function TaskEditModal({
@@ -86,7 +90,7 @@ export function TaskEditModal({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [contacts, setContacts] = useState<Contact[]>([]);
-    const [objectives, setObjectives] = useState<FlattenedObjective[]>([]);
+    const [goals, setGoals] = useState<FlattenedGoal[]>([]);
     const [comments, setComments] = useState<TaskComment[]>([]);
     const [showDeadlineWarning, setShowDeadlineWarning] = useState(false);
     const [pendingSubmitData, setPendingSubmitData] = useState<TaskFormValues | null>(null);
@@ -99,7 +103,7 @@ export function TaskEditModal({
             deadline: null,
             status: 'pending',
             priority: 'medium',
-            quarterlyObjectiveId: null,
+            goalId: null,
             categoryId: null,
         },
     });
@@ -117,28 +121,43 @@ export function TaskEditModal({
         loadContacts();
     }, []);
 
-    // Load objectives for dropdown
+    // Load goals for dropdown
     useEffect(() => {
-        const loadObjectives = async () => {
+        const loadGoals = async () => {
             try {
-                const response = await objectivesApi.listYearly();
-                const flattened: FlattenedObjective[] = [];
-                (response.objectives || []).forEach((yearly: YearlyObjective) => {
-                    yearly.quarterlyObjectives.forEach((q: QuarterlyObjective) => {
-                        flattened.push({
-                            id: q.id,
-                            label: q.title,
-                            yearlyTitle: yearly.title,
-                            quarter: q.quarter,
-                        });
+                const response = await goalsApi.list();
+                const flattened: FlattenedGoal[] = [];
+                // The backend returns { goals: [...] } where goals are top-level (Yearly) with nested children
+                const topLevelGoals = (response as any).goals || [];
+
+                topLevelGoals.forEach((yearly: any) => {
+                    // Add the Yearly goal itself
+                    flattened.push({
+                        id: yearly.id,
+                        label: yearly.title,
+                        parentTitle: "Yearly Objectives",
+                        type: yearly.type
                     });
+
+                    // Add its children (Quarterly goals)
+                    if (yearly.children && Array.isArray(yearly.children)) {
+                        yearly.children.forEach((quarterly: any) => {
+                            flattened.push({
+                                id: quarterly.id,
+                                label: quarterly.title,
+                                parentTitle: yearly.title,
+                                type: quarterly.type
+                            });
+                        });
+                    }
                 });
-                setObjectives(flattened);
+
+                setGoals(flattened);
             } catch (err) {
-                console.error('Failed to load objectives:', err);
+                console.error('Failed to load goals:', err);
             }
         };
-        loadObjectives();
+        loadGoals();
     }, []);
 
     // Reset form and comments when task changes
@@ -150,7 +169,7 @@ export function TaskEditModal({
                 deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : null,
                 status: task.status,
                 priority: task.priority,
-                quarterlyObjectiveId: task.quarterlyObjectiveId || null,
+                goalId: task.goalId || null,
                 categoryId: task.categoryId || null,
             });
             setComments(task.comments || []);
@@ -162,7 +181,7 @@ export function TaskEditModal({
                 deadline: null,
                 status: 'pending',
                 priority: 'medium',
-                quarterlyObjectiveId: null,
+                goalId: null,
                 categoryId: null,
             });
             setComments([]);
@@ -243,14 +262,14 @@ export function TaskEditModal({
 
 
 
-    // Group objectives by yearly objective
-    const groupedObjectives = objectives.reduce((acc, obj) => {
-        if (!acc[obj.yearlyTitle]) {
-            acc[obj.yearlyTitle] = [];
+    // Group goals by parent
+    const groupedGoals = goals.reduce((acc, obj) => {
+        if (!acc[obj.parentTitle]) {
+            acc[obj.parentTitle] = [];
         }
-        acc[obj.yearlyTitle].push(obj);
+        acc[obj.parentTitle].push(obj);
         return acc;
-    }, {} as Record<string, FlattenedObjective[]>);
+    }, {} as Record<string, FlattenedGoal[]>);
 
     return (
         <>
@@ -289,7 +308,7 @@ export function TaskEditModal({
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Status</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select status" />
@@ -312,7 +331,7 @@ export function TaskEditModal({
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Priority</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select priority" />
@@ -338,7 +357,7 @@ export function TaskEditModal({
                                         <FormLabel>Assignee</FormLabel>
                                         <Select
                                             onValueChange={(value) => field.onChange(value === 'unassigned' ? null : value)}
-                                            defaultValue={field.value || 'unassigned'}
+                                            value={field.value || 'unassigned'}
                                         >
                                             <FormControl>
                                                 <SelectTrigger>
@@ -362,16 +381,42 @@ export function TaskEditModal({
                                 control={form.control}
                                 name="deadline"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Deadline</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="date"
-                                                {...field}
-                                                value={field.value || ''}
-                                                onChange={(e) => field.onChange(e.target.value || null)}
-                                            />
-                                        </FormControl>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant={"outline"}
+                                                        className={cn(
+                                                            "w-full pl-3 text-left font-normal border-input shadow-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200",
+                                                            !field.value && "text-muted-foreground"
+                                                        )}
+                                                    >
+                                                        {field.value ? (
+                                                            format(new Date(field.value), "PPP")
+                                                        ) : (
+                                                            <span>Pick a date</span>
+                                                        )}
+                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0 shadow-lg rounded-xl border-border/50" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? new Date(field.value) : undefined}
+                                                    onSelect={(date) => field.onChange(date ? date.toISOString() : null)}
+                                                    disabled={(date) =>
+                                                        date < new Date("1900-01-01")
+                                                    }
+                                                    captionLayout="dropdown"
+                                                    fromYear={1900}
+                                                    toYear={new Date().getFullYear() + 10}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -380,7 +425,7 @@ export function TaskEditModal({
                             {/* Supports Objective Field */}
                             <FormField
                                 control={form.control}
-                                name="quarterlyObjectiveId"
+                                name="goalId"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="flex items-center gap-1">
@@ -389,7 +434,7 @@ export function TaskEditModal({
                                         </FormLabel>
                                         <Select
                                             onValueChange={(value) => field.onChange(value === 'none' ? null : value)}
-                                            defaultValue={field.value || 'none'}
+                                            value={field.value || 'none'}
                                         >
                                             <FormControl>
                                                 <SelectTrigger>
@@ -400,16 +445,16 @@ export function TaskEditModal({
                                                 <SelectItem value="none">
                                                     <span className="text-gray-500">No linked objective</span>
                                                 </SelectItem>
-                                                {Object.entries(groupedObjectives).map(([yearlyTitle, quarters]) => (
-                                                    <SelectGroup key={yearlyTitle}>
+                                                {Object.entries(groupedGoals).map(([parentTitle, children]) => (
+                                                    <SelectGroup key={parentTitle}>
                                                         <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                                            {yearlyTitle.length > 40 ? yearlyTitle.slice(0, 40) + '...' : yearlyTitle}
+                                                            {parentTitle.length > 40 ? parentTitle.slice(0, 40) + '...' : parentTitle}
                                                         </SelectLabel>
-                                                        {quarters.map((q) => (
-                                                            <SelectItem key={q.id} value={q.id}>
+                                                        {children.map((g) => (
+                                                            <SelectItem key={g.id} value={g.id}>
                                                                 <span className="flex items-center gap-2">
-                                                                    <span className="text-xs font-bold text-blue-600">Q{q.quarter}</span>
-                                                                    <span>{q.label.length > 35 ? q.label.slice(0, 35) + '...' : q.label}</span>
+                                                                    <span className="text-xs font-bold text-blue-600">{g.type}</span>
+                                                                    <span>{g.label.length > 35 ? g.label.slice(0, 35) + '...' : g.label}</span>
                                                                 </span>
                                                             </SelectItem>
                                                         ))}
@@ -434,7 +479,7 @@ export function TaskEditModal({
                                         </FormLabel>
                                         <Select
                                             onValueChange={(value) => field.onChange(value === 'none' ? null : value)}
-                                            defaultValue={field.value || 'none'}
+                                            value={field.value || 'none'}
                                         >
                                             <FormControl>
                                                 <SelectTrigger>

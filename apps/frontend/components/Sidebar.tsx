@@ -32,12 +32,6 @@ export function Sidebar() {
                 </div>
             </div>
 
-            {/* New Deal Button */}
-            <div className="px-4 py-4">
-                <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-md shadow-primary/20">
-                    + New Deal
-                </Button>
-            </div>
 
             {/* Navigation */}
             <nav className="flex-1 space-y-1 px-3 py-4">

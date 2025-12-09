@@ -68,6 +68,26 @@ export default function MeetingDetailPage() {
         }
     }, [meetingId, loadMeeting]);
 
+    // Auto-poll for task updates when meeting has no tasks (still processing)
+    useEffect(() => {
+        if (!meeting || meeting.tasks.length > 0) return;
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await meetingsApi.get(meetingId);
+                const updatedMeeting = (response as any).meeting;
+                if (updatedMeeting.tasks.length > 0) {
+                    setMeeting(updatedMeeting);
+                    clearInterval(pollInterval);
+                }
+            } catch (err) {
+                console.error('Polling error:', err);
+            }
+        }, 2000);
+
+        return () => clearInterval(pollInterval);
+    }, [meeting, meetingId]);
+
     const handleTaskClick = (task: TaskWithRelations) => {
         setSelectedTask(task);
         setEditModalOpen(true);
@@ -75,10 +95,32 @@ export default function MeetingDetailPage() {
 
     const handleReprocess = async () => {
         setIsReprocessing(true);
-        // Simulate reprocessing
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        setIsReprocessing(false);
-        loadMeeting();
+        try {
+            await meetingsApi.reprocess(meetingId);
+            // Poll for completion - the backend processes in background
+            // Wait a bit then start checking
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Poll every 2 seconds for up to 60 seconds
+            let attempts = 0;
+            const maxAttempts = 30;
+            while (attempts < maxAttempts) {
+                const response = await meetingsApi.get(meetingId);
+                const updatedMeeting = (response as any).meeting;
+                if (updatedMeeting.processed && updatedMeeting.tasks.length > 0) {
+                    setMeeting(updatedMeeting);
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                attempts++;
+            }
+        } catch (err) {
+            console.error('Failed to reprocess meeting:', err);
+            alert('Failed to reprocess meeting');
+        } finally {
+            setIsReprocessing(false);
+            loadMeeting();
+        }
     };
 
     const formatDate = (date: string) => {
@@ -209,11 +251,9 @@ export default function MeetingDetailPage() {
                     <CardContent>
                         {meeting.tasks.length === 0 ? (
                             <div className="text-center py-12 text-gray-500">
-                                <Calendar className="h-12 w-12 mx-auto text-gray-400" />
-                                <p className="mt-4">No tasks extracted yet.</p>
-                                <Button onClick={handleReprocess} className="mt-4" disabled={isReprocessing}>
-                                    {isReprocessing ? 'Processing...' : 'Process Meeting'}
-                                </Button>
+                                <RefreshCw className="h-12 w-12 mx-auto text-amber-500 animate-spin" />
+                                <p className="mt-4 font-medium">Processing transcript...</p>
+                                <p className="mt-1 text-sm text-gray-400">Extracting tasks from your meeting</p>
                             </div>
                         ) : (
                             <div className="space-y-3 max-h-[500px] overflow-y-auto">
@@ -226,8 +266,13 @@ export default function MeetingDetailPage() {
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-gray-900 line-clamp-2">
-                                                    {task.description}
+                                                    {task.title || task.description}
                                                 </p>
+                                                {task.title && task.description && (
+                                                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                                                        {task.description}
+                                                    </p>
+                                                )}
                                                 <div className="flex flex-wrap items-center gap-2 mt-2">
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${task.status === 'completed' ? 'bg-green-100 text-green-800' :
                                                         task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :

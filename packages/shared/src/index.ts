@@ -53,6 +53,7 @@ export interface Task {
   id: string;
   meetingId: string;
   userId: string;
+  title: string;
   description: string;
   assigneeId: string | null;
   assigneeName: string | null;
@@ -64,6 +65,8 @@ export interface Task {
   reviewedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  goalId?: string | null;
+  categoryId?: string | null;
 }
 
 // Task with relations (for API responses)

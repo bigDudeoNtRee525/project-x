@@ -11,7 +11,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { FileText, Table, Download, Calendar } from 'lucide-react';
+import { FileText, Table, Download, Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { exportTasksToCSV, generateWeeklyReport, downloadFile } from '@/lib/exportUtils';
 import type { TaskWithRelations } from '@meeting-task-tool/shared';
 
@@ -98,21 +102,59 @@ export function ExportReportModal({
                             <div className="flex items-center gap-2 mb-4">
                                 <div className="grid gap-1.5 flex-1">
                                     <label className="text-xs font-medium text-gray-500">From</label>
-                                    <Input
-                                        type="date"
-                                        value={reportStartDate}
-                                        onChange={(e) => setReportStartDate(e.target.value)}
-                                        className="h-8"
-                                    />
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full justify-start text-left font-normal border-input shadow-sm h-8",
+                                                    !reportStartDate && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {reportStartDate ? format(new Date(reportStartDate), "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 shadow-lg rounded-xl border-border/50" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={reportStartDate ? new Date(reportStartDate) : undefined}
+                                                onSelect={(date) => setReportStartDate(date ? date.toISOString().split('T')[0] : '')}
+                                                initialFocus
+                                                captionLayout="dropdown"
+                                                fromYear={2020}
+                                                toYear={new Date().getFullYear() + 1}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                                 <div className="grid gap-1.5 flex-1">
                                     <label className="text-xs font-medium text-gray-500">To</label>
-                                    <Input
-                                        type="date"
-                                        value={reportEndDate}
-                                        onChange={(e) => setReportEndDate(e.target.value)}
-                                        className="h-8"
-                                    />
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full justify-start text-left font-normal border-input shadow-sm h-8",
+                                                    !reportEndDate && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {reportEndDate ? format(new Date(reportEndDate), "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 shadow-lg rounded-xl border-border/50" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={reportEndDate ? new Date(reportEndDate) : undefined}
+                                                onSelect={(date) => setReportEndDate(date ? date.toISOString().split('T')[0] : '')}
+                                                initialFocus
+                                                captionLayout="dropdown"
+                                                fromYear={2020}
+                                                toYear={new Date().getFullYear() + 1}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                             </div>
 

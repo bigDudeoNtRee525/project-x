@@ -270,3 +270,54 @@
     background-color: rgba(255, 255, 255, 0.1);
   }
 }
+
+/* React Flow Controls Override */
+.react-flow__controls {
+  box-shadow: none !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden !important;
+  margin: 15px !important;
+  /* Add some spacing from the edge */
+}
+
+.react-flow__controls-button {
+  background-color: var(--card) !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-right: none !important;
+  width: 40px !important;
+  /* Make it bigger as requested */
+  height: 40px !important;
+  transition: background-color 0.2s;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: var(--card-hover) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: var(--foreground) !important;
+  width: 20px !important;
+  height: 20px !important;
+}
+
+/* React Flow MiniMap Override */
+.react-flow__minimap {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  margin: 15px !important;
+}
+
+.react-flow__minimap-mask {
+  fill: var(--muted) !important;
+  opacity: 0.6 !important;
+}
+/* Hide React Day Picker's "visually hidden" elements */
+.rdp-vhidden {
+  @apply sr-only;
+}

@@ -6,7 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { meetingsApi } from '@/lib/api';
-import { Plus, RefreshCw, FileText, Clock, CheckCircle, XCircle, Calendar, X, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, FileText, Clock, CheckCircle, XCircle, Calendar as CalendarIcon, X, Trash2 } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { MeetingUploadModal } from '@/components/MeetingUploadModal';
 import { SearchInput } from '@/components/SearchInput';
 import type { MeetingWithCount } from '@meeting-task-tool/shared';
@@ -159,22 +163,56 @@ export default function MeetingsPage() {
                         />
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    type="date"
-                                    value={dateFrom}
-                                    onChange={(e) => setDateFrom(e.target.value)}
-                                    className="w-[140px] bg-input border-border text-foreground"
-                                    placeholder="From"
-                                />
+                                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-[140px] justify-start text-left font-normal border-input shadow-sm h-9 bg-input text-foreground",
+                                                !dateFrom && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {dateFrom ? format(new Date(dateFrom), "MMM d, yyyy") : <span>From</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 shadow-lg rounded-xl border-border/50" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={dateFrom ? new Date(dateFrom) : undefined}
+                                            onSelect={(date) => setDateFrom(date ? date.toISOString().split('T')[0] : '')}
+                                            initialFocus
+                                            captionLayout="dropdown"
+                                            fromYear={2020}
+                                            toYear={new Date().getFullYear() + 1}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
                                 <span className="text-muted-foreground">to</span>
-                                <Input
-                                    type="date"
-                                    value={dateTo}
-                                    onChange={(e) => setDateTo(e.target.value)}
-                                    className="w-[140px] bg-input border-border text-foreground"
-                                    placeholder="To"
-                                />
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-[140px] justify-start text-left font-normal border-input shadow-sm h-9 bg-input text-foreground",
+                                                !dateTo && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {dateTo ? format(new Date(dateTo), "MMM d, yyyy") : <span>To</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 shadow-lg rounded-xl border-border/50" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={dateTo ? new Date(dateTo) : undefined}
+                                            onSelect={(date) => setDateTo(date ? date.toISOString().split('T')[0] : '')}
+                                            initialFocus
+                                            captionLayout="dropdown"
+                                            fromYear={2020}
+                                            toYear={new Date().getFullYear() + 1}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                             {hasActiveFilters && (
                                 <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground hover:text-foreground">

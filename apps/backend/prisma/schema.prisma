@@ -69,6 +69,7 @@ model Task {
   id            String   @id @default(uuid())
   meetingId     String   @map("meeting_id")
   userId        String   @map("user_id")
+  title         String   @default("")
   description   String   @db.Text
   assigneeId    String?  @map("assignee_id")
   assigneeName  String?  @map("assignee_name")
