@@ -35,13 +35,11 @@ services:
     build:
       context: .
       dockerfile: ./apps/backend/Dockerfile
-    # --- THE FIX IS HERE ---
-    # We override the default startup command. 
-    # 1. We force 'prisma generate' to run first (fixes the SSL/Alpine crash).
-    # 2. Then we start the app. 
-    # Note: If your start script is named "dev" or "start:dev", change "npm start" below.
-    command: /bin/sh -c "npx prisma generate && npm start"
-    # -----------------------
+    # --- FIX APPLIED HERE ---
+    # 1. 'npx prisma generate' runs first to download the correct OpenSSL engine.
+    # 2. 'npm run dev' runs the source code directly (fixing the "missing dist/server.js" error).
+    command: /bin/sh -c "npx prisma generate && npm run dev"
+    # ------------------------
     ports:
       - "3001:3001"
     environment:
