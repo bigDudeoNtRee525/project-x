@@ -1,7 +1,10 @@
 # Development Dockerfile for backend
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
+
+# Install required system dependencies (OpenSSL, CA certificates)
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy root package files
 COPY package*.json ./

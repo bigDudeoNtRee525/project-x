@@ -3,9 +3,8 @@
 
 generator client {
   provider      = "prisma-client-js"
-  // FIX: This line tells Prisma to support your local machine (native)
-  // AND the specific Docker environment (Alpine Linux with OpenSSL 3.0)
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  // Prisma will auto-detect the Debian environment (debian-openssl-3.0.x)
+  binaryTargets = ["native"]
 }
 
 datasource db {
