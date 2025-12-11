@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // Only these paths are accessible without authentication
-const publicPaths = ['/login', '/register'];
+const publicPaths = ['/login', '/register', '/'];
 
 // Paths that should redirect to dashboard if already authenticated
 const authPaths = ['/login', '/register'];
@@ -63,10 +63,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // If user is authenticated and at root, redirect to dashboard
-  if (session && pathname === '/') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
 
   return response;
 }
