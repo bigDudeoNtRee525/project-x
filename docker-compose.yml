@@ -29,6 +29,9 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - DEEPSEEKAUTH=${DEEPSEEKAUTH}
+    volumes:
+      - ./apps/backend:/app/apps/backend
+      - /app/apps/backend/node_modules
 
   frontend:
     build:
@@ -39,6 +42,9 @@ services:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - /app/apps/frontend/node_modules
 
 volumes:
   postgres_data:
