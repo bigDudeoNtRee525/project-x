@@ -36,12 +36,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/api/v1/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
     volumes:
       - ./apps/backend:/app/apps/backend
 
@@ -56,8 +50,7 @@ services:
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     volumes:
       - ./apps/frontend:/app/apps/frontend
       - /app/apps/frontend/node_modules
