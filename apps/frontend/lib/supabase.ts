@@ -42,7 +42,13 @@ export async function getCurrentSession() {
 export async function getCurrentUser() {
   const client = getSupabaseClient();
   const { data: { user }, error } = await client.auth.getUser();
-  if (error) throw error;
+  // Don't throw on missing session - just return null
+  if (error) {
+    if (error.name === 'AuthSessionMissingError') {
+      return null;
+    }
+    throw error;
+  }
   return user;
 }
 
