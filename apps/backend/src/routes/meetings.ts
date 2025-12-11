@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { optionalAuthenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { loadTeamContext, buildPersonalAndTeamWhere } from '../middleware/team';
 import { prisma } from '../lib/prisma';
 import { z } from 'zod';
@@ -16,11 +16,10 @@ const createMeetingSchema = z.object({
 });
 
 // Create a new meeting
-router.post('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
-
+router.post('/', authenticate, loadTeamContext, async (req, res) => {
   try {
     const data = createMeetingSchema.parse(req.body);
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
 
     // Determine teamId based on scope
     const teamId = data.scope === 'team' && req.team?.teamId ? req.team.teamId : null;
@@ -135,11 +134,10 @@ router.post('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
 });
 
 // List user's meetings (personal + team)
-router.get('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
-
+router.get('/', authenticate, loadTeamContext, async (req, res) => {
   try {
     const { scope } = req.query;
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
     const teamId = req.team?.teamId;
 
     // Build where clause based on scope
@@ -177,10 +175,9 @@ router.get('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
 });
 
 // Get meeting details with tasks
-router.get('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => {
-
+router.get('/:id', authenticate, loadTeamContext, async (req, res) => {
   try {
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
     const teamId = req.team?.teamId;
 
     const meeting = await prisma.meeting.findFirst({
@@ -236,10 +233,10 @@ router.get('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => {
 });
 
 // Reprocess a meeting (re-run AI extraction)
-router.post('/:id/reprocess', optionalAuthenticate, loadTeamContext, async (req, res) => {
+router.post('/:id/reprocess', authenticate, loadTeamContext, async (req, res) => {
   try {
     const meetingId = req.params.id as string;
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
     const teamId = req.team?.teamId;
 
     // Verify meeting exists and belongs to user or their team
@@ -360,9 +357,9 @@ router.post('/:id/reprocess', optionalAuthenticate, loadTeamContext, async (req,
 });
 
 // Delete a meeting
-router.delete('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => {
+router.delete('/:id', authenticate, loadTeamContext, async (req, res) => {
   try {
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
     const teamId = req.team?.teamId;
 
     const meeting = await prisma.meeting.findFirst({
@@ -388,10 +385,10 @@ router.delete('/:id', optionalAuthenticate, loadTeamContext, async (req, res) =>
 });
 
 // Confirm all tasks for a meeting
-router.post('/:id/confirm-tasks', optionalAuthenticate, loadTeamContext, async (req, res) => {
+router.post('/:id/confirm-tasks', authenticate, loadTeamContext, async (req, res) => {
   try {
     const meetingId = req.params.id;
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
     const teamId = req.team?.teamId;
 
     // Verify meeting exists and belongs to user or their team

@@ -45,8 +45,6 @@ export default function RegisterPage() {
     try {
       await signUp(data.email, data.password, data.name || undefined);
       setSuccess(true);
-      // Note: User may need to confirm email, so we don't auto-redirect
-      // Show success message instead
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     }

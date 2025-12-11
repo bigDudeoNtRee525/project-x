@@ -1,23 +1,74 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
-// List of public paths that don't require authentication
-const publicPaths = ['/login', '/register', '/', '/dashboard', '/meetings', '/contacts'];
+// Only these paths are accessible without authentication
+const publicPaths = ['/login', '/register'];
 
-export function middleware(request: NextRequest) {
+// Paths that should redirect to dashboard if already authenticated
+const authPaths = ['/login', '/register'];
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if the path is public
-  const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+  // Create a response that we'll potentially modify
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
 
-  // For now, allow all requests
-  // TODO: Implement proper authentication check using Supabase session
-  // const session = await supabase.auth.getSession();
-  // if (!session && !isPublicPath) {
-  //   return NextResponse.redirect(new URL('/login', request.url));
-  // }
+  // Create Supabase client for middleware
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+          response = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
 
-  return NextResponse.next();
+  // Get the session
+  const { data: { session } } = await supabase.auth.getSession();
+
+  // Check if path is public
+  const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'));
+
+  // Check if path is an auth path (login/register)
+  const isAuthPath = authPaths.some(path => pathname === path || pathname.startsWith(path + '/'));
+
+  // If user is not authenticated and trying to access protected route
+  if (!session && !isPublicPath) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // If user is authenticated and trying to access auth pages, redirect to dashboard
+  if (session && isAuthPath) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // If user is authenticated and at root, redirect to dashboard
+  if (session && pathname === '/') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  return response;
 }
 
 export const config = {
@@ -27,8 +78,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
+     * - public folder assets
+     * - api routes (handled separately)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
   ],
 };

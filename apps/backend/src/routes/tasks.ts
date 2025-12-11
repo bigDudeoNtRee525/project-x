@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { optionalAuthenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { loadTeamContext, buildPersonalAndTeamWhere } from '../middleware/team';
 import { prisma } from '../lib/prisma';
 import { z } from 'zod';
@@ -43,10 +43,10 @@ const formatTaskWithAssignees = (task: any) => {
 };
 
 // Create a new task
-router.post('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
+router.post('/', authenticate, loadTeamContext, async (req, res) => {
   try {
     const data = createTaskSchema.parse(req.body);
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
 
     // Determine teamId based on scope
     const teamId = data.scope === 'team' && req.team?.teamId ? req.team.teamId : null;
@@ -102,8 +102,7 @@ router.post('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
 });
 
 // List tasks with filters (personal + team data)
-router.get('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
-
+router.get('/', authenticate, loadTeamContext, async (req, res) => {
   try {
     const {
       status,
@@ -115,7 +114,7 @@ router.get('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
       scope, // 'personal', 'team', or 'all' (default)
     } = req.query;
 
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
     const teamId = req.team?.teamId;
 
     // Build where clause based on scope
@@ -180,12 +179,11 @@ router.get('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
 });
 
 // Update task
-router.patch('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => {
-
+router.patch('/:id', authenticate, loadTeamContext, async (req, res) => {
   try {
     const data = updateTaskSchema.parse(req.body);
     const taskId = req.params.id;
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
     const teamId = req.team?.teamId;
 
     // Verify task belongs to user (personal) or their team
@@ -251,11 +249,10 @@ router.patch('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => 
 });
 
 // Mark task as reviewed
-router.put('/:id/review', optionalAuthenticate, loadTeamContext, async (req, res) => {
-
+router.put('/:id/review', authenticate, loadTeamContext, async (req, res) => {
   try {
     const taskId = req.params.id;
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
     const teamId = req.team?.teamId;
 
     // Verify task belongs to user (personal) or their team
@@ -286,10 +283,10 @@ router.put('/:id/review', optionalAuthenticate, loadTeamContext, async (req, res
 });
 
 // Delete a task
-router.delete('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => {
+router.delete('/:id', authenticate, loadTeamContext, async (req, res) => {
   try {
     const taskId = req.params.id;
-    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user!.id;
     const teamId = req.team?.teamId;
 
     // Verify task belongs to user (personal) or their team

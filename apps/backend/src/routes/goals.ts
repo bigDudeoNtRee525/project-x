@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { optionalAuthenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { z } from 'zod';
 
@@ -18,13 +18,13 @@ const createGoalSchema = z.object({
 const updateGoalSchema = createGoalSchema.partial();
 
 // Create a new goal
-router.post('/', optionalAuthenticate, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
     try {
         const data = createGoalSchema.parse(req.body);
 
         const goal = await prisma.goal.create({
             data: {
-                userId: req.user?.id || '00000000-0000-0000-0000-000000000000',
+                userId: req.user!.id,
                 title: data.title,
                 type: data.type,
                 parentId: data.parentId,
@@ -68,9 +68,9 @@ router.post('/', optionalAuthenticate, async (req, res) => {
 });
 
 // List goals (hierarchical)
-router.get('/', optionalAuthenticate, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
     try {
-        const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+        const userId = req.user!.id;
 
         // Fetch all goals for the user
         const goals = await prisma.goal.findMany({
@@ -118,10 +118,10 @@ router.get('/', optionalAuthenticate, async (req, res) => {
 });
 
 // Update a goal
-router.patch('/:id', optionalAuthenticate, async (req, res) => {
+router.patch('/:id', authenticate, async (req, res) => {
     try {
         const data = updateGoalSchema.parse(req.body);
-        const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+        const userId = req.user!.id;
 
         const goal = await prisma.goal.update({
             where: { id: req.params.id, userId }, // Ensure ownership
@@ -140,9 +140,9 @@ router.patch('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // Delete a goal
-router.delete('/:id', optionalAuthenticate, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
     try {
-        const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+        const userId = req.user!.id;
         await prisma.goal.delete({
             where: { id: req.params.id, userId },
         });

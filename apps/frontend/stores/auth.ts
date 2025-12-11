@@ -106,7 +106,7 @@ export const useAuthStore = create<AuthState>()(
               },
             },
           });
-          // Note: User won't be immediately authenticated if email confirmation is required
+          // User needs to confirm email before being authenticated
           set({ user: null, isAuthenticated: false, isLoading: false });
         } finally {
           setLoading(false);
