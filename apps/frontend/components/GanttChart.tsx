@@ -4,6 +4,7 @@ import {
     useMemo,
     useState,
     useEffect,
+    useRef,
     MouseEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -13,26 +14,26 @@ interface GanttChartProps {
     tasks: TaskWithRelations[];
 }
 
-// Status colors with gradient support - using Opus theme variables
+// Status colors with gradient support
 const statusStyles: Record<string, { bg: string; gradient: string; text: string }> = {
     pending: {
-        bg: 'bg-[var(--chart-1)]',
-        gradient: 'from-[var(--chart-1)] to-[oklch(from_var(--chart-1)_l_c_h_/_0.8)]',
+        bg: 'bg-amber-500',
+        gradient: 'from-amber-500 to-amber-600',
         text: 'Pending',
     },
     in_progress: {
-        bg: 'bg-[var(--chart-3)]',
-        gradient: 'from-[var(--chart-3)] to-[oklch(from_var(--chart-3)_l_c_h_/_0.8)]',
+        bg: 'bg-blue-500',
+        gradient: 'from-blue-500 to-blue-600',
         text: 'In Progress',
     },
     completed: {
-        bg: 'bg-[var(--chart-2)]',
-        gradient: 'from-[var(--chart-2)] to-[oklch(from_var(--chart-2)_l_c_h_/_0.8)]',
+        bg: 'bg-emerald-500',
+        gradient: 'from-emerald-500 to-emerald-600',
         text: 'Completed',
     },
     cancelled: {
-        bg: 'bg-muted-foreground',
-        gradient: 'from-muted-foreground to-muted',
+        bg: 'bg-gray-400',
+        gradient: 'from-gray-400 to-gray-500',
         text: 'Cancelled',
     },
 };
@@ -75,6 +76,56 @@ export function GanttChart({ tasks }: GanttChartProps) {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [popover, setPopover] = useState<PopoverState>(null);
 
+    // Refs for scroll synchronization
+    const headerScrollRef = useRef<HTMLDivElement>(null);
+    const taskScrollRef = useRef<HTMLDivElement>(null);
+    const timelineScrollRef = useRef<HTMLDivElement>(null);
+
+    // Sync scrolling between panels
+    useEffect(() => {
+        const timeline = timelineScrollRef.current;
+        const header = headerScrollRef.current;
+        const taskList = taskScrollRef.current;
+
+        if (!timeline || !header || !taskList) return;
+
+        let isSyncing = false;
+
+        const handleTimelineScroll = () => {
+            if (isSyncing) return;
+            isSyncing = true;
+            // Sync horizontal scroll with header
+            header.scrollLeft = timeline.scrollLeft;
+            // Sync vertical scroll with task list
+            taskList.scrollTop = timeline.scrollTop;
+            isSyncing = false;
+        };
+
+        const handleTaskScroll = () => {
+            if (isSyncing) return;
+            isSyncing = true;
+            timeline.scrollTop = taskList.scrollTop;
+            isSyncing = false;
+        };
+
+        const handleHeaderScroll = () => {
+            if (isSyncing) return;
+            isSyncing = true;
+            timeline.scrollLeft = header.scrollLeft;
+            isSyncing = false;
+        };
+
+        timeline.addEventListener('scroll', handleTimelineScroll);
+        taskList.addEventListener('scroll', handleTaskScroll);
+        header.addEventListener('scroll', handleHeaderScroll);
+
+        return () => {
+            timeline.removeEventListener('scroll', handleTimelineScroll);
+            taskList.removeEventListener('scroll', handleTaskScroll);
+            header.removeEventListener('scroll', handleHeaderScroll);
+        };
+    }, []);
+
     const tasksWithDeadlines = useMemo(
         () => tasks.filter((t) => t.deadline),
         [tasks],
@@ -91,41 +142,39 @@ export function GanttChart({ tasks }: GanttChartProps) {
             start = new Date(now);
             start.setDate(start.getDate() - 7);
             end = new Date(now);
-            end.setDate(end.getDate() + 28);
+            end.setDate(end.getDate() + 14);
         } else {
             const dates = tasksWithDeadlines.map((t) => new Date(t.deadline!));
-            const minDate = new Date(
-                Math.min(...dates.map((d) => d.getTime()), now.getTime()),
-            );
+            const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
             const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
 
-            start = new Date(minDate);
-            start.setDate(start.getDate() - 7);
+            // Start a bit before the earliest deadline
+            start = new Date(Math.min(minDate.getTime(), now.getTime()));
+            start.setDate(start.getDate() - 14); // 2 weeks before
 
-            end = new Date(maxDate);
-            end.setDate(end.getDate() + 14);
+            // End a bit after the latest deadline
+            end = new Date(Math.max(maxDate.getTime(), now.getTime()));
+            end.setDate(end.getDate() + 7); // 1 week after
         }
 
         // Normalize times
         start.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
 
-        // Align start to view boundaries
+        // Align start to clean boundaries based on view
         if (viewMode === 'week') {
             // Start of week (Sunday)
             start.setDate(start.getDate() - start.getDay());
         } else if (viewMode === 'month') {
-            // First of month
-            start.setDate(1);
+            // Start of the week containing the start date
+            start.setDate(start.getDate() - start.getDay());
         } else {
-            // Start of quarter
-            const m = start.getMonth();
-            const qStart = Math.floor(m / 3) * 3;
-            start.setMonth(qStart, 1);
+            // Quarter: start of month
+            start.setDate(1);
         }
 
         const diffMs = end.getTime() - start.getTime();
-        const days = Math.max(1, Math.ceil(diffMs / DAY_MS));
+        const days = Math.max(14, Math.ceil(diffMs / DAY_MS)); // minimum 2 weeks
 
         const units: TimeUnit[] = [];
 
@@ -144,7 +193,7 @@ export function GanttChart({ tasks }: GanttChartProps) {
         } else if (viewMode === 'month') {
             // 1 label per 7 days
             let current = new Date(start);
-            while (current < end) {
+            while (current <= end) {
                 const startIndex = Math.round(
                     (current.getTime() - start.getTime()) / DAY_MS,
                 );
@@ -170,7 +219,7 @@ export function GanttChart({ tasks }: GanttChartProps) {
         } else {
             // Quarter: 1 column per month
             let current = new Date(start);
-            while (current < end) {
+            while (current <= end) {
                 const startIndex = Math.round(
                     (current.getTime() - start.getTime()) / DAY_MS,
                 );
@@ -225,37 +274,40 @@ export function GanttChart({ tasks }: GanttChartProps) {
     function getTaskPositionPx(deadline: Date) {
         const startTime = startDate.getTime();
         const endTime = endDate.getTime();
-        const totalMs = endTime - startTime;
 
-        if (totalMs <= 0) {
-            return { left: 0, width: 40 };
+        if (endTime <= startTime) {
+            return { left: 0, width: 80 };
         }
 
-        const deadlineTime = deadline.getTime();
+        // Parse the deadline and normalize to local midnight
+        // This handles ISO strings that might be in UTC
+        const deadlineDate = new Date(deadline);
+        const localDeadline = new Date(
+            deadlineDate.getFullYear(),
+            deadlineDate.getMonth(),
+            deadlineDate.getDate(),
+            0, 0, 0, 0
+        );
+        const deadlineTime = localDeadline.getTime();
 
-        // Fake "duration" before deadline for visual bar length
-        const durationDays =
-            viewMode === 'week' ? 2 : viewMode === 'month' ? 5 : 14;
+        // Bar width in days (visual representation - bar ENDS at deadline)
+        const barDurationDays = viewMode === 'week' ? 3 : viewMode === 'month' ? 7 : 21;
 
-        let startMs = deadlineTime - durationDays * DAY_MS;
-        let endMs = deadlineTime;
+        // Calculate where the deadline falls in our timeline (in days from start)
+        // Add 1 to include the deadline day itself in the visual
+        const deadlineDayIndex = (deadlineTime - startTime) / DAY_MS + 1;
 
-        // Clamp to visible range
-        if (endMs < startTime) {
-            endMs = startTime;
+        // Bar ends at deadline, starts barDurationDays before
+        const barStartDayIndex = Math.max(0, deadlineDayIndex - barDurationDays);
+        const barEndDayIndex = deadlineDayIndex;
+
+        // If deadline is before visible range, don't show
+        if (barEndDayIndex <= 0) {
+            return { left: 0, width: 0 };
         }
-        if (startMs > endTime) {
-            startMs = endTime;
-        }
 
-        startMs = Math.max(startMs, startTime);
-        endMs = Math.min(endMs, endTime);
-
-        const startDayIndex = (startMs - startTime) / DAY_MS;
-        const endDayIndex = (endMs - startTime) / DAY_MS;
-
-        const left = startDayIndex * dayWidth;
-        const width = Math.max((endDayIndex - startDayIndex) * dayWidth, 40); // min width in px
+        const left = barStartDayIndex * dayWidth;
+        const width = Math.max((barEndDayIndex - barStartDayIndex) * dayWidth, 80);
 
         return { left, width };
     }
@@ -355,216 +407,152 @@ export function GanttChart({ tasks }: GanttChartProps) {
                 </div>
             </div>
 
-            {/* Main grid (shared vertical scroll) */}
-            <div className="flex min-h-[280px] max-h-[560px] overflow-y-auto">
-                {/* Left: Task details column (non-clickable) */}
-                <div className="w-80 shrink-0 border-r border-border bg-card">
-                    <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-2 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                        Task
+            {/* Main content with synced scrolling */}
+            <div className="flex">
+                {/* Left column: Task header + Task list */}
+                <div className="w-64 shrink-0 border-r border-border flex flex-col">
+                    {/* Task header */}
+                    <div className="h-12 px-4 flex items-center bg-muted/50 border-b border-border">
+                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                            Task
+                        </span>
                     </div>
-                    <div>
-                        {tasksWithDeadlines.map((task) => {
-                            const isHovered = hoveredTask === task.id;
-                            const isSelected = selectedTaskId === task.id;
-                            const status = statusStyles[task.status] || statusStyles.pending;
-                            const priority =
-                                priorityStyles[task.priority] || priorityStyles.medium;
+                    {/* Task list - synced vertical scroll */}
+                    <div ref={taskScrollRef} className="flex-1 overflow-y-auto scrollbar-hide" style={{ maxHeight: 400 }}>
+                        <div style={{ height: tasksWithDeadlines.length * ROW_HEIGHT }}>
+                            {tasksWithDeadlines.map((task) => {
+                                const isHovered = hoveredTask === task.id;
+                                const isSelected = selectedTaskId === task.id;
+                                const status = statusStyles[task.status] || statusStyles.pending;
+                                const priority = priorityStyles[task.priority] || priorityStyles.medium;
 
-                            return (
-                                <div
-                                    key={task.id}
-                                    className={`flex items-center gap-3 px-4 text-sm transition-colors border-b border-border/40 last:border-b-0 ${isSelected
-                                            ? 'bg-muted/80'
-                                            : isHovered
-                                                ? 'bg-muted/60'
-                                                : 'hover:bg-muted/30'
-                                        }`}
-                                    style={{ height: ROW_HEIGHT }}
-                                    onMouseEnter={() => setHoveredTask(task.id)}
-                                    onMouseLeave={() => setHoveredTask(null)}
-                                >
+                                return (
                                     <div
-                                        className={`w-2.5 h-2.5 rounded-full ${priority.dot} shrink-0`}
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium text-card-foreground truncate">
+                                        key={task.id}
+                                        className={`flex items-center gap-3 px-4 text-sm transition-colors border-b border-border/30 ${isSelected ? 'bg-muted/80' : isHovered ? 'bg-muted/50' : ''}`}
+                                        style={{ height: ROW_HEIGHT }}
+                                        onMouseEnter={() => setHoveredTask(task.id)}
+                                        onMouseLeave={() => setHoveredTask(null)}
+                                    >
+                                        <div className={`w-2 h-2 rounded-full ${priority.dot} shrink-0`} />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-medium text-card-foreground truncate text-sm">
                                                 {task.description}
-                                            </span>
-                                            <span
-                                                className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap ${task.status === 'completed'
-                                                        ? 'bg-green-500/10 text-green-500 border-green-500/25'
-                                                        : task.status === 'in_progress'
-                                                            ? 'bg-blue-500/10 text-blue-500 border-blue-500/25'
-                                                            : task.status === 'cancelled'
-                                                                ? 'bg-muted text-muted-foreground border-border'
-                                                                : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/25'
-                                                    }`}
-                                            >
-                                                {status.text}
-                                            </span>
-                                        </div>
-                                        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground truncate">
-                                            <span>{task.assigneeName || 'Unassigned'}</span>
-                                            <span>•</span>
-                                            <span>
-                                                Due{' '}
-                                                {new Date(task.deadline!).toLocaleDateString('en-US', {
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    year: 'numeric',
-                                                })}
-                                            </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                                    task.status === 'completed' ? 'bg-emerald-500/15 text-emerald-600' :
+                                                    task.status === 'in_progress' ? 'bg-blue-500/15 text-blue-600' :
+                                                    task.status === 'cancelled' ? 'bg-gray-500/15 text-gray-500' :
+                                                    'bg-amber-500/15 text-amber-600'
+                                                }`}>
+                                                    {status.text}
+                                                </span>
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {new Date(task.deadline!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 
-                {/* Right: Timeline */}
-                <div className="flex-1 overflow-hidden">
-                    <div className="relative h-full overflow-x-auto">
-                        <div className="relative" style={{ minWidth: chartWidth }}>
-                            {/* Timeline header */}
-                            <div className="sticky top-0 z-10 flex border-b border-border bg-muted/70 backdrop-blur-sm">
-                                {timeUnits.map((unit, idx) => {
-                                    const colWidth =
-                                        (unit.endDayIndex - unit.startDayIndex || 1) * dayWidth;
+                {/* Right column: Timeline header + Timeline grid */}
+                <div className="flex-1 flex flex-col min-w-0">
+                    {/* Timeline header - synced horizontal scroll */}
+                    <div ref={headerScrollRef} className="h-12 overflow-x-auto scrollbar-hide bg-muted/50 border-b border-border">
+                        <div className="relative h-full" style={{ width: chartWidth }}>
+                            {timeUnits.map((unit, idx) => (
+                                <div
+                                    key={idx}
+                                    className="absolute top-0 h-full flex flex-col justify-center border-l border-border/50 pl-2"
+                                    style={{ left: unit.startDayIndex * dayWidth }}
+                                >
+                                    <div className="text-xs font-medium text-card-foreground whitespace-nowrap">
+                                        {unit.label}
+                                    </div>
+                                    {unit.subLabel && (
+                                        <div className="text-[10px] text-muted-foreground">
+                                            {unit.subLabel}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-                                    return (
-                                        <div
-                                            key={idx}
-                                            className="px-2 py-2 text-center border-r border-border last:border-r-0"
-                                            style={{ width: colWidth }}
-                                        >
-                                            <div className="text-xs font-medium text-card-foreground">
-                                                {unit.label}
-                                            </div>
-                                            {unit.subLabel && (
-                                                <div className="text-[10px] text-muted-foreground">
-                                                    {unit.subLabel}
+                    {/* Timeline grid - main scroll area */}
+                    <div ref={timelineScrollRef} className="flex-1 overflow-auto" style={{ maxHeight: 400 }}>
+                        <div className="relative" style={{ width: chartWidth, height: Math.max(tasksWithDeadlines.length * ROW_HEIGHT, 200) }}>
+                            {/* Vertical grid lines at each time unit */}
+                            {timeUnits.map((unit, idx) => (
+                                <div
+                                    key={idx}
+                                    className="absolute top-0 bottom-0 border-l border-border/30"
+                                    style={{ left: unit.startDayIndex * dayWidth }}
+                                />
+                            ))}
+
+                            {/* Horizontal row lines */}
+                            {tasksWithDeadlines.map((_, rowIndex) => (
+                                <div
+                                    key={rowIndex}
+                                    className="absolute left-0 right-0 border-b border-border/30"
+                                    style={{ top: (rowIndex + 1) * ROW_HEIGHT }}
+                                />
+                            ))}
+
+                            {/* Today marker */}
+                            {todayIndex !== null && (
+                                <div
+                                    className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
+                                    style={{ left: todayIndex * dayWidth }}
+                                >
+                                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500" />
+                                </div>
+                            )}
+
+                            {/* Task bars */}
+                            {tasksWithDeadlines.map((task, rowIndex) => {
+                                const position = getTaskPositionPx(new Date(task.deadline!));
+                                const isHovered = hoveredTask === task.id;
+                                const isSelected = selectedTaskId === task.id;
+                                const status = statusStyles[task.status] || statusStyles.pending;
+                                const priority = priorityStyles[task.priority] || priorityStyles.medium;
+                                const top = rowIndex * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2;
+
+                                if (position.width === 0) return null;
+
+                                return (
+                                    <div
+                                        key={task.id}
+                                        className="absolute cursor-pointer transition-all duration-150"
+                                        style={{ top, left: position.left, width: position.width, height: BAR_HEIGHT }}
+                                        onMouseEnter={() => setHoveredTask(task.id)}
+                                        onMouseLeave={() => setHoveredTask(null)}
+                                        onClick={(e) => handleTaskClick(task, e)}
+                                    >
+                                        <div className={`relative h-full rounded-md bg-gradient-to-r ${status.gradient} shadow-sm transition-all duration-150 ${
+                                            isHovered || isSelected ? `scale-[1.03] ring-2 ring-offset-1 ring-offset-card ${priority.ring} shadow-md` : ''
+                                        }`}>
+                                            <div className="absolute inset-0 rounded-md bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+                                            {task.status === 'in_progress' && (
+                                                <div className="absolute inset-0 rounded-md overflow-hidden pointer-events-none">
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-shimmer" />
                                                 </div>
                                             )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Grid + bars */}
-                            <div
-                                className="relative"
-                                style={{ height: tasksWithDeadlines.length * ROW_HEIGHT }}
-                            >
-                                {/* Vertical day grid */}
-                                <div className="absolute inset-0 pointer-events-none flex">
-                                    {Array.from({ length: totalDays }).map((_, dayIndex) => (
-                                        <div
-                                            key={dayIndex}
-                                            className={`h-full border-r ${dayIndex % 7 === 0
-                                                    ? 'border-border'
-                                                    : 'border-border/40'
-                                                }`}
-                                            style={{ width: dayWidth }}
-                                        />
-                                    ))}
-                                </div>
-
-                                {/* Horizontal row separators */}
-                                <div className="absolute inset-0 pointer-events-none">
-                                    {tasksWithDeadlines.map((_, rowIndex) => (
-                                        <div
-                                            key={rowIndex}
-                                            className="absolute left-0 right-0 border-b border-border/40"
-                                            style={{ top: (rowIndex + 1) * ROW_HEIGHT }}
-                                        />
-                                    ))}
-                                </div>
-
-                                {/* Today marker */}
-                                {todayIndex !== null && (
-                                    <div className="absolute top-0 bottom-0 pointer-events-none">
-                                        <div
-                                            className="absolute top-0 bottom-0 w-[2px] bg-red-500"
-                                            style={{ left: todayIndex * dayWidth }}
-                                        >
-                                            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
+                                            <div className="relative h-full flex items-center px-2 gap-1 overflow-hidden">
+                                                <span className="text-[11px] text-white font-medium truncate drop-shadow-sm">
+                                                    {task.description}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                )}
-
-                                {/* Task bars (clickable) */}
-                                <div className="relative">
-                                    {tasksWithDeadlines.map((task, rowIndex) => {
-                                        const position = getTaskPositionPx(
-                                            new Date(task.deadline!),
-                                        );
-                                        const isHovered = hoveredTask === task.id;
-                                        const isSelected = selectedTaskId === task.id;
-                                        const status =
-                                            statusStyles[task.status] || statusStyles.pending;
-                                        const priority =
-                                            priorityStyles[task.priority] || priorityStyles.medium;
-
-                                        const top =
-                                            rowIndex * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2;
-
-                                        return (
-                                            <div
-                                                key={task.id}
-                                                className="absolute cursor-pointer"
-                                                style={{
-                                                    top,
-                                                    left: position.left,
-                                                    width: position.width,
-                                                    height: BAR_HEIGHT,
-                                                }}
-                                                onMouseEnter={() => setHoveredTask(task.id)}
-                                                onMouseLeave={() => setHoveredTask(null)}
-                                                onClick={(e) => handleTaskClick(task, e)}
-                                            >
-                                                <div
-                                                    className={`relative h-full rounded-xl bg-gradient-to-r ${status.gradient} shadow-md transition-transform duration-150 ${isHovered || isSelected
-                                                            ? `scale-[1.02] ring-2 ring-offset-1 ring-offset-card ${priority.ring}`
-                                                            : ''
-                                                        }`}
-                                                >
-                                                    {/* Shine effect */}
-                                                    <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
-
-                                                    {/* Progress shimmer for in_progress */}
-                                                    {task.status === 'in_progress' && (
-                                                        <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
-                                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-                                                        </div>
-                                                    )}
-
-                                                    {/* Bar content */}
-                                                    <div className="relative h-full flex items-center justify-between px-3 gap-2">
-                                                        <span className="text-xs text-white font-medium truncate drop-shadow-sm">
-                                                            {task.description.length > 30
-                                                                ? task.description.substring(0, 30) + '…'
-                                                                : task.description}
-                                                        </span>
-                                                        {position.width > 80 && (
-                                                            <span className="text-[11px] text-white/90 font-medium shrink-0 drop-shadow-sm">
-                                                                {new Date(task.deadline!).toLocaleDateString(
-                                                                    'en-US',
-                                                                    {
-                                                                        month: 'short',
-                                                                        day: 'numeric',
-                                                                    },
-                                                                )}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -604,7 +592,7 @@ export function GanttChart({ tasks }: GanttChartProps) {
                 </div>
             </div>
 
-            {/* CSS for shimmer animation */}
+            {/* CSS for shimmer animation and scrollbar hiding */}
             <style>{`
         @keyframes gantt-shimmer {
           0% { transform: translateX(-100%); }
@@ -612,6 +600,13 @@ export function GanttChart({ tasks }: GanttChartProps) {
         }
         .animate-shimmer {
           animation: gantt-shimmer 2s infinite;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
 
@@ -641,10 +636,68 @@ function TaskPopover({
     onClose: () => void;
 }) {
     const [mounted, setMounted] = useState(false);
+    const popoverRef = useRef<HTMLDivElement>(null);
+    const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    // Calculate position after render to measure actual popover size
+    useEffect(() => {
+        if (!mounted || !state || !popoverRef.current) return;
+
+        const updatePosition = () => {
+            const popover = popoverRef.current;
+            if (!popover) return;
+
+            const { anchor } = state;
+            const viewportHeight = window.innerHeight;
+            const viewportWidth = window.innerWidth;
+            const popoverRect = popover.getBoundingClientRect();
+            const popoverHeight = popoverRect.height;
+            const popoverWidth = popoverRect.width;
+            const gap = 12;
+
+            // Determine vertical placement
+            const spaceBelow = viewportHeight - anchor.bottom - gap;
+            const spaceAbove = anchor.top - gap;
+
+            let top: number;
+
+            if (spaceBelow >= popoverHeight) {
+                // Enough space below
+                top = anchor.bottom + gap;
+            } else if (spaceAbove >= popoverHeight) {
+                // Place above
+                top = anchor.top - gap - popoverHeight;
+            } else {
+                // Not enough space either way - position to maximize visibility
+                if (spaceBelow >= spaceAbove) {
+                    // More space below, align to bottom of viewport
+                    top = viewportHeight - popoverHeight - gap;
+                } else {
+                    // More space above, align to top of viewport
+                    top = gap;
+                }
+            }
+
+            // Final clamp to viewport
+            top = Math.max(gap, Math.min(top, viewportHeight - popoverHeight - gap));
+
+            // Calculate horizontal position (centered on bar, but clamped to viewport)
+            let left = anchor.left + anchor.width / 2;
+            const halfPopover = popoverWidth / 2;
+
+            // Clamp to keep popover within viewport
+            left = Math.max(halfPopover + gap, Math.min(left, viewportWidth - halfPopover - gap));
+
+            setPosition({ top, left });
+        };
+
+        // Use requestAnimationFrame to ensure DOM has rendered
+        requestAnimationFrame(updatePosition);
+    }, [mounted, state]);
 
     useEffect(() => {
         if (!state) return;
@@ -669,39 +722,37 @@ function TaskPopover({
     if (!mounted || !state) return null;
     if (typeof document === 'undefined') return null;
 
-    const { task, anchor } = state;
+    const { task } = state;
     const status = statusStyles[task.status] || statusStyles.pending;
     const priority = priorityStyles[task.priority] || priorityStyles.medium;
 
-    // Position below the clicked bar; you can flip to above by using anchor.top
-    const top = anchor.bottom + 8;
-    const left = anchor.left + anchor.width / 2;
-
     return createPortal(
-        <div className="fixed inset-0 z-[80] pointer-events-none">
+        <div className="fixed inset-0 z-[9999] pointer-events-none">
             {/* click-away overlay */}
             <div
                 className="absolute inset-0 pointer-events-auto"
                 onClick={onClose}
             />
             <div
-                className="absolute pointer-events-auto max-w-xs sm:max-w-sm"
+                ref={popoverRef}
+                className="absolute pointer-events-auto w-[320px]"
                 style={{
-                    top,
-                    left,
+                    top: position?.top ?? -9999,
+                    left: position?.left ?? -9999,
                     transform: 'translateX(-50%)',
+                    visibility: position ? 'visible' : 'hidden',
                 }}
             >
-                <div className="rounded-xl border border-border bg-popover text-popover-foreground shadow-xl px-3 py-2 text-xs">
+                <div className="rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl px-4 py-3 text-xs">
                     <div className="flex items-start gap-2">
                         <span
-                            className={`mt-0.5 w-2.5 h-2.5 rounded-full ${priority.dot}`}
+                            className={`mt-0.5 w-2.5 h-2.5 rounded-full shrink-0 ${priority.dot}`}
                         />
-                        <div>
+                        <div className="min-w-0 flex-1">
                             <div className="text-sm font-semibold leading-snug break-words">
                                 {task.description}
                             </div>
-                            <div className="mt-1 text-[11px] text-muted-foreground flex flex-wrap items-center gap-2">
+                            <div className="mt-2 text-[11px] text-muted-foreground flex flex-wrap items-center gap-2">
                                 <span>
                                     Status:{' '}
                                     <span className="font-medium">{status.text}</span>
@@ -711,10 +762,10 @@ function TaskPopover({
                                     Priority:{' '}
                                     <span className="font-medium">{priority.label}</span>
                                 </span>
-                                {task.assigneeName && (
+                                {task.assignees && task.assignees.length > 0 && (
                                     <>
                                         <span>•</span>
-                                        <span>Assignee: {task.assigneeName}</span>
+                                        <span>Assignee: {task.assignees.map(a => a.name).join(', ')}</span>
                                     </>
                                 )}
                             </div>

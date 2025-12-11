@@ -72,23 +72,27 @@ router.post('/', optionalAuthenticate, async (req, res) => {
         // 4. Save Tasks & Update Meeting
         console.log(`Saving ${extractedTasks.length} tasks...`);
         await prisma.$transaction(async (tx) => {
-          // Create tasks
-          if (extractedTasks.length > 0) {
-            await tx.task.createMany({
-              data: extractedTasks.map((t: ExtractedTask) => ({
+          // Create tasks with assignees (can't use createMany with nested relations)
+          for (const t of extractedTasks) {
+            await tx.task.create({
+              data: {
                 meetingId: meeting.id,
                 userId,
                 title: t.title,
                 description: t.description || '',
-                assigneeId: t.assigneeId,
-                assigneeName: t.assigneeName,
                 priority: t.priority,
                 deadline: t.deadline ? new Date(t.deadline) : null,
                 goalId: contextResult?.goalId,
                 categoryId: contextResult?.categoryId,
                 aiExtracted: true,
                 status: 'pending',
-              })),
+                // Create assignee relationship if AI extracted an assignee
+                ...(t.assigneeId && {
+                  assignees: {
+                    create: { contactId: t.assigneeId },
+                  },
+                }),
+              },
             });
           }
 
@@ -162,11 +166,15 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         tasks: {
           orderBy: { createdAt: 'asc' },
           include: {
-            assignee: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
+            assignees: {
+              include: {
+                contact: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
               },
             },
           },
@@ -178,7 +186,23 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
-    res.json({ meeting });
+    // Format tasks with assignees array
+    const formattedMeeting = {
+      ...meeting,
+      tasks: meeting.tasks.map((task) => {
+        const { assignees, ...rest } = task;
+        return {
+          ...rest,
+          assignees: assignees.map((a) => ({
+            id: a.contact.id,
+            name: a.contact.name,
+            email: a.contact.email,
+          })),
+        };
+      }),
+    };
+
+    res.json({ meeting: formattedMeeting });
   } catch (error) {
     console.error('Error fetching meeting:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -261,22 +285,27 @@ router.post('/:id/reprocess', optionalAuthenticate, async (req, res) => {
         // 4. Save Tasks & Update Meeting
         console.log(`Saving ${extractedTasks.length} tasks...`);
         await prisma.$transaction(async (tx) => {
-          if (extractedTasks.length > 0) {
-            await tx.task.createMany({
-              data: extractedTasks.map((t: ExtractedTask) => ({
+          // Create tasks with assignees (can't use createMany with nested relations)
+          for (const t of extractedTasks) {
+            await tx.task.create({
+              data: {
                 meetingId,
                 userId,
                 title: t.title,
                 description: t.description || '',
-                assigneeId: t.assigneeId,
-                assigneeName: t.assigneeName,
                 priority: t.priority,
                 deadline: t.deadline ? new Date(t.deadline) : null,
                 goalId: contextResult?.goalId,
                 categoryId: contextResult?.categoryId,
                 aiExtracted: true,
                 status: 'pending',
-              })),
+                // Create assignee relationship if AI extracted an assignee
+                ...(t.assigneeId && {
+                  assignees: {
+                    create: { contactId: t.assigneeId },
+                  },
+                }),
+              },
             });
           }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -8,7 +9,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { X, CheckCircle, AlertCircle, User } from 'lucide-react';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { X, CheckCircle, AlertCircle, Users } from 'lucide-react';
 import type { Contact } from '@meeting-task-tool/shared';
 
 interface BulkActionBarProps {
@@ -16,7 +18,7 @@ interface BulkActionBarProps {
     contacts: Contact[];
     onUpdateStatus: (status: string) => void;
     onUpdatePriority: (priority: string) => void;
-    onUpdateAssignee: (assigneeId: string | null) => void;
+    onUpdateAssignees: (assigneeIds: string[]) => void;
     onClearSelection: () => void;
 }
 
@@ -25,9 +27,20 @@ export function BulkActionBar({
     contacts,
     onUpdateStatus,
     onUpdatePriority,
-    onUpdateAssignee,
+    onUpdateAssignees,
     onClearSelection,
 }: BulkActionBarProps) {
+    const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+
+    const handleAssigneesChange = (ids: string[]) => {
+        setSelectedAssignees(ids);
+    };
+
+    const handleApplyAssignees = () => {
+        onUpdateAssignees(selectedAssignees);
+        setSelectedAssignees([]);
+    };
+
     if (selectedCount === 0) return null;
 
     return (
@@ -73,22 +86,28 @@ export function BulkActionBar({
                     </Select>
                 </div>
 
-                {/* Assignee dropdown */}
+                {/* Assignees multi-select */}
                 <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <Select onValueChange={(value) => onUpdateAssignee(value === 'unassigned' ? null : value)}>
-                        <SelectTrigger className="w-[140px] bg-muted border-input text-foreground text-sm h-9">
-                            <SelectValue placeholder="Assign to" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                            {contacts.map((contact) => (
-                                <SelectItem key={contact.id} value={contact.id}>
-                                    {contact.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <div className="w-[180px]">
+                        <MultiSelect
+                            options={contacts.map((c) => ({ value: c.id, label: c.name }))}
+                            selected={selectedAssignees}
+                            onChange={handleAssigneesChange}
+                            placeholder="Assign to..."
+                            className="bg-muted border-input text-sm h-9"
+                        />
+                    </div>
+                    {selectedAssignees.length > 0 && (
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={handleApplyAssignees}
+                            className="h-9"
+                        >
+                            Apply
+                        </Button>
+                    )}
                 </div>
 
                 {/* Clear selection button */}

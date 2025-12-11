@@ -213,6 +213,30 @@ export const contactsApi = {
     }
     return api.get('/contacts');
   },
+  getStats: async () => {
+    if (USE_MOCK_DATA) {
+      await delay(300);
+      // Generate mock stats for contacts
+      const contactsWithStats = mockContacts.map(c => ({
+        ...c,
+        stats: {
+          inProgressCount: Math.floor(Math.random() * 5),
+          backlogCount: Math.floor(Math.random() * 3),
+          completedCount: Math.floor(Math.random() * 10) + 2,
+          totalTasks: 0,
+          deliveryRate: Math.floor(Math.random() * 40) + 60,
+          avgBacklogDays: Math.floor(Math.random() * 7),
+          productivityScore: Math.floor(Math.random() * 30) + 70,
+        }
+      }));
+      // Calculate totalTasks based on other counts
+      contactsWithStats.forEach(c => {
+        c.stats.totalTasks = c.stats.inProgressCount + c.stats.backlogCount + c.stats.completedCount;
+      });
+      return { contacts: contactsWithStats };
+    }
+    return api.get('/contacts/stats');
+  },
   create: async (data: any) => {
     if (USE_MOCK_DATA) {
       await delay(400);

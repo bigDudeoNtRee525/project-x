@@ -283,8 +283,6 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-1',
         userId: 'mock-user',
         description: 'Optimize database queries for improved performance',
-        assigneeId: 'contact-4',
-        assigneeName: 'David Kim',
         deadline: new Date('2024-12-10'),
         status: 'in_progress',
         priority: 'high',
@@ -295,7 +293,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-01T12:00:00'),
         updatedAt: new Date('2024-12-03T10:00:00'),
         meeting: { id: 'meeting-1', title: 'Q4 Product Planning Session', createdAt: new Date('2024-12-01T10:00:00') },
-        assignee: { id: 'contact-4', name: 'David Kim', email: 'david.kim@company.com' },
+        assignees: [{ id: 'contact-4', name: 'David Kim', email: 'david.kim@company.com' }],
         comments: [
             { id: 'c1', text: 'Started profiling slow queries. Found 3 N+1 problems.', author: 'David Kim', createdAt: new Date('2024-12-02T10:30:00') },
             { id: 'c2', text: 'Optimized the main dashboard query - 60% faster now!', author: 'David Kim', createdAt: new Date('2024-12-03T15:20:00') },
@@ -307,8 +305,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-1',
         userId: 'mock-user',
         description: 'Deliver dashboard redesign mockups',
-        assigneeId: 'contact-3',
-        assigneeName: 'Emily Rodriguez',
+        
+        
         deadline: new Date('2024-12-06'),
         status: 'completed',
         priority: 'high',
@@ -319,7 +317,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-01T12:00:00'),
         updatedAt: new Date('2024-12-05T14:00:00'),
         meeting: { id: 'meeting-1', title: 'Q4 Product Planning Session', createdAt: new Date('2024-12-01T10:00:00') },
-        assignee: { id: 'contact-3', name: 'Emily Rodriguez', email: 'emily.r@company.com' },
+        assignees: [{ id: 'contact-3', name: 'Emily Rodriguez', email: 'emily.r@company.com' }],
     },
     {
         id: 'task-3',
@@ -327,8 +325,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-1',
         userId: 'mock-user',
         description: 'Set up performance testing suite',
-        assigneeId: 'contact-5',
-        assigneeName: 'Lisa Thompson',
+        
+        
         deadline: new Date('2024-12-15'),
         status: 'pending',
         priority: 'medium',
@@ -339,7 +337,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-01T12:00:00'),
         updatedAt: new Date('2024-12-01T12:00:00'),
         meeting: { id: 'meeting-1', title: 'Q4 Product Planning Session', createdAt: new Date('2024-12-01T10:00:00') },
-        assignee: { id: 'contact-5', name: 'Lisa Thompson', email: 'lisa.t@company.com' },
+        assignees: [{ id: 'contact-5', name: 'Lisa Thompson', email: 'lisa.t@company.com' }],
     },
     {
         id: 'task-4',
@@ -347,8 +345,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-1',
         userId: 'mock-user',
         description: 'Review API architecture and propose improvements',
-        assigneeId: 'contact-2',
-        assigneeName: 'Marcus Johnson',
+        
+        
         deadline: new Date('2024-12-12'),
         status: 'pending',
         priority: 'high',
@@ -358,7 +356,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-01T12:00:00'),
         updatedAt: new Date('2024-12-01T12:00:00'),
         meeting: { id: 'meeting-1', title: 'Q4 Product Planning Session', createdAt: new Date('2024-12-01T10:00:00') },
-        assignee: { id: 'contact-2', name: 'Marcus Johnson', email: 'marcus.j@company.com' },
+        assignees: [{ id: 'contact-2', name: 'Marcus Johnson', email: 'marcus.j@company.com' }],
     },
 
     // Tasks from Meeting 2: Sprint Retrospective
@@ -368,8 +366,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-2',
         userId: 'mock-user',
         description: 'Create documentation templates for the team',
-        assigneeId: 'contact-6',
-        assigneeName: 'Alex Rivera',
+        
+        
         deadline: new Date('2024-12-09'),
         status: 'in_progress',
         priority: 'medium',
@@ -379,7 +377,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-02T15:00:00'),
         updatedAt: new Date('2024-12-04T09:00:00'),
         meeting: { id: 'meeting-2', title: 'Sprint Retrospective - Week 48', createdAt: new Date('2024-12-02T14:00:00') },
-        assignee: { id: 'contact-6', name: 'Alex Rivera', email: 'alex.r@company.com' },
+        assignees: [{ id: 'contact-6', name: 'Alex Rivera', email: 'alex.r@company.com' }],
     },
     {
         id: 'task-6',
@@ -387,8 +385,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-2',
         userId: 'mock-user',
         description: 'Set up automated code review checks',
-        assigneeId: 'contact-8',
-        assigneeName: 'James Wilson',
+        
+        
         deadline: new Date('2024-12-11'),
         status: 'pending',
         priority: 'medium',
@@ -398,7 +396,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-02T15:00:00'),
         updatedAt: new Date('2024-12-02T15:00:00'),
         meeting: { id: 'meeting-2', title: 'Sprint Retrospective - Week 48', createdAt: new Date('2024-12-02T14:00:00') },
-        assignee: { id: 'contact-8', name: 'James Wilson', email: 'james.w@company.com' },
+        assignees: [{ id: 'contact-8', name: 'James Wilson', email: 'james.w@company.com' }],
     },
     {
         id: 'task-7',
@@ -406,8 +404,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-2',
         userId: 'mock-user',
         description: 'Analyze sprint velocity metrics and create report',
-        assigneeId: 'contact-7',
-        assigneeName: 'Nina Patel',
+        
+        
         deadline: new Date('2024-12-08'),
         status: 'completed',
         priority: 'low',
@@ -417,7 +415,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-02T15:00:00'),
         updatedAt: new Date('2024-12-07T11:00:00'),
         meeting: { id: 'meeting-2', title: 'Sprint Retrospective - Week 48', createdAt: new Date('2024-12-02T14:00:00') },
-        assignee: { id: 'contact-7', name: 'Nina Patel', email: 'nina.p@company.com' },
+        assignees: [{ id: 'contact-7', name: 'Nina Patel', email: 'nina.p@company.com' }],
     },
 
     // Tasks from Meeting 3: Client Feedback
@@ -427,8 +425,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-3',
         userId: 'mock-user',
         description: 'Create timeline estimates for export functionality',
-        assigneeId: 'contact-1',
-        assigneeName: 'Sarah Chen',
+        
+        
         deadline: new Date('2024-12-10'),
         status: 'in_progress',
         priority: 'high',
@@ -438,7 +436,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-03T11:00:00'),
         updatedAt: new Date('2024-12-05T10:00:00'),
         meeting: { id: 'meeting-3', title: 'Client Feedback Review', createdAt: new Date('2024-12-03T10:00:00') },
-        assignee: { id: 'contact-1', name: 'Sarah Chen', email: 'sarah.chen@company.com' },
+        assignees: [{ id: 'contact-1', name: 'Sarah Chen', email: 'sarah.chen@company.com' }],
     },
     {
         id: 'task-9',
@@ -446,8 +444,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-3',
         userId: 'mock-user',
         description: 'Design initial mockups for dark mode theme',
-        assigneeId: 'contact-3',
-        assigneeName: 'Emily Rodriguez',
+        
+        
         deadline: new Date('2024-12-13'),
         status: 'pending',
         priority: 'medium',
@@ -457,7 +455,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-03T11:00:00'),
         updatedAt: new Date('2024-12-03T11:00:00'),
         meeting: { id: 'meeting-3', title: 'Client Feedback Review', createdAt: new Date('2024-12-03T10:00:00') },
-        assignee: { id: 'contact-3', name: 'Emily Rodriguez', email: 'emily.r@company.com' },
+        assignees: [{ id: 'contact-3', name: 'Emily Rodriguez', email: 'emily.r@company.com' }],
     },
     {
         id: 'task-10',
@@ -465,8 +463,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-3',
         userId: 'mock-user',
         description: 'Evaluate mobile app feasibility and create proposal',
-        assigneeId: 'contact-2',
-        assigneeName: 'Marcus Johnson',
+        
+        
         deadline: new Date('2024-12-20'),
         status: 'pending',
         priority: 'low',
@@ -476,7 +474,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-03T11:00:00'),
         updatedAt: new Date('2024-12-03T11:00:00'),
         meeting: { id: 'meeting-3', title: 'Client Feedback Review', createdAt: new Date('2024-12-03T10:00:00') },
-        assignee: { id: 'contact-2', name: 'Marcus Johnson', email: 'marcus.j@company.com' },
+        assignees: [{ id: 'contact-2', name: 'Marcus Johnson', email: 'marcus.j@company.com' }],
     },
 
     // Tasks from Meeting 4: Technical Architecture
@@ -486,8 +484,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-4',
         userId: 'mock-user',
         description: 'Create microservices architecture diagram',
-        assigneeId: 'contact-4',
-        assigneeName: 'David Kim',
+        
+        
         deadline: new Date('2024-12-11'),
         status: 'in_progress',
         priority: 'high',
@@ -498,7 +496,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-04T16:00:00'),
         updatedAt: new Date('2024-12-05T09:00:00'),
         meeting: { id: 'meeting-4', title: 'Technical Architecture Discussion', createdAt: new Date('2024-12-04T14:00:00') },
-        assignee: { id: 'contact-4', name: 'David Kim', email: 'david.kim@company.com' },
+        assignees: [{ id: 'contact-4', name: 'David Kim', email: 'david.kim@company.com' }],
     },
     {
         id: 'task-12',
@@ -506,8 +504,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-4',
         userId: 'mock-user',
         description: 'POC Kubernetes cluster setup for microservices',
-        assigneeId: 'contact-8',
-        assigneeName: 'James Wilson',
+        
+        
         deadline: new Date('2024-12-18'),
         status: 'pending',
         priority: 'high',
@@ -518,7 +516,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-04T16:00:00'),
         updatedAt: new Date('2024-12-04T16:00:00'),
         meeting: { id: 'meeting-4', title: 'Technical Architecture Discussion', createdAt: new Date('2024-12-04T14:00:00') },
-        assignee: { id: 'contact-8', name: 'James Wilson', email: 'james.w@company.com' },
+        assignees: [{ id: 'contact-8', name: 'James Wilson', email: 'james.w@company.com' }],
     },
     {
         id: 'task-13',
@@ -526,8 +524,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-4',
         userId: 'mock-user',
         description: 'Define testing strategy for microservices architecture',
-        assigneeId: 'contact-5',
-        assigneeName: 'Lisa Thompson',
+        
+        
         deadline: new Date('2024-12-16'),
         status: 'pending',
         priority: 'medium',
@@ -537,7 +535,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-04T16:00:00'),
         updatedAt: new Date('2024-12-04T16:00:00'),
         meeting: { id: 'meeting-4', title: 'Technical Architecture Discussion', createdAt: new Date('2024-12-04T14:00:00') },
-        assignee: { id: 'contact-5', name: 'Lisa Thompson', email: 'lisa.t@company.com' },
+        assignees: [{ id: 'contact-5', name: 'Lisa Thompson', email: 'lisa.t@company.com' }],
     },
 
     // Tasks from Meeting 5: Weekly Standup
@@ -547,8 +545,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Provide engineering input for Q1 roadmap',
-        assigneeId: 'contact-2',
-        assigneeName: 'Marcus Johnson',
+        
+        
         deadline: new Date('2024-12-06'),
         status: 'pending',
         priority: 'urgent',
@@ -558,7 +556,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-05T09:30:00'),
         updatedAt: new Date('2024-12-05T09:30:00'),
         meeting: { id: 'meeting-5', title: 'Weekly Team Standup', createdAt: new Date('2024-12-05T09:00:00') },
-        assignee: { id: 'contact-2', name: 'Marcus Johnson', email: 'marcus.j@company.com' },
+        assignees: [{ id: 'contact-2', name: 'Marcus Johnson', email: 'marcus.j@company.com' }],
     },
     {
         id: 'task-15',
@@ -566,8 +564,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Complete API optimization work',
-        assigneeId: 'contact-2',
-        assigneeName: 'Marcus Johnson',
+        
+        
         deadline: new Date('2024-12-08'),
         status: 'in_progress',
         priority: 'high',
@@ -577,7 +575,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-05T09:30:00'),
         updatedAt: new Date('2024-12-05T09:30:00'),
         meeting: { id: 'meeting-5', title: 'Weekly Team Standup', createdAt: new Date('2024-12-05T09:00:00') },
-        assignee: { id: 'contact-2', name: 'Marcus Johnson', email: 'marcus.j@company.com' },
+        assignees: [{ id: 'contact-2', name: 'Marcus Johnson', email: 'marcus.j@company.com' }],
     },
     {
         id: 'task-16',
@@ -585,8 +583,6 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Review database migration scripts',
-        assigneeId: null,
-        assigneeName: null,
         deadline: new Date('2024-12-07'),
         status: 'pending',
         priority: 'high',
@@ -596,7 +592,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-05T09:30:00'),
         updatedAt: new Date('2024-12-05T09:30:00'),
         meeting: { id: 'meeting-5', title: 'Weekly Team Standup', createdAt: new Date('2024-12-05T09:00:00') },
-        assignee: null,
+        assignees: [],
     },
     {
         id: 'task-17',
@@ -604,8 +600,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Demo dashboard analytics to stakeholders',
-        assigneeId: 'contact-7',
-        assigneeName: 'Nina Patel',
+        
+        
         deadline: new Date('2024-12-09'),
         status: 'pending',
         priority: 'medium',
@@ -615,7 +611,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-05T09:30:00'),
         updatedAt: new Date('2024-12-05T09:30:00'),
         meeting: { id: 'meeting-5', title: 'Weekly Team Standup', createdAt: new Date('2024-12-05T09:00:00') },
-        assignee: { id: 'contact-7', name: 'Nina Patel', email: 'nina.p@company.com' },
+        assignees: [{ id: 'contact-7', name: 'Nina Patel', email: 'nina.p@company.com' }],
     },
     {
         id: 'task-18',
@@ -623,8 +619,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         meetingId: 'meeting-5',
         userId: 'mock-user',
         description: 'Finalize design system updates',
-        assigneeId: 'contact-3',
-        assigneeName: 'Emily Rodriguez',
+        
+        
         deadline: new Date('2024-12-06'),
         status: 'in_progress',
         priority: 'medium',
@@ -634,7 +630,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         createdAt: new Date('2024-12-05T09:30:00'),
         updatedAt: new Date('2024-12-05T09:30:00'),
         meeting: { id: 'meeting-5', title: 'Weekly Team Standup', createdAt: new Date('2024-12-05T09:00:00') },
-        assignee: { id: 'contact-3', name: 'Emily Rodriguez', email: 'emily.r@company.com' },
+        assignees: [{ id: 'contact-3', name: 'Emily Rodriguez', email: 'emily.r@company.com' }],
     },
 ];
 
@@ -957,7 +953,7 @@ export function filterMockTasks(filters: {
     return mockTasks.filter(task => {
         if (filters.status && task.status !== filters.status) return false;
         if (filters.priority && task.priority !== filters.priority) return false;
-        if (filters.assigneeId && task.assigneeId !== filters.assigneeId) return false;
+        if (filters.assigneeId && !task.assignees?.some(a => a.id === filters.assigneeId)) return false;
         if (filters.reviewed !== undefined && task.reviewed !== filters.reviewed) return false;
         return true;
     });

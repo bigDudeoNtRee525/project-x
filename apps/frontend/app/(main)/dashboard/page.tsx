@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, List, Plus, RefreshCw, Edit2, BarChart3, CalendarDays, Users, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
 import { tasksApi, contactsApi } from '@/lib/api';
+import { getCurrentUser } from '@/lib/supabase';
 import { MeetingUploadModal } from '@/components/MeetingUploadModal';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { TaskFilters } from '@/components/TaskFilters';
@@ -18,7 +19,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { StatCard } from '@/components/StatCard';
 import { UserTasksModal } from '@/components/UserTasksModal';
 import { StatTasksModal, StatType } from '@/components/StatTasksModal';
-import type { TaskWithRelations, Contact } from '@meeting-task-tool/shared';
+import { TeamTasksModal } from '@/components/TeamTasksModal';
+import { MyTasksCard } from '@/components/MyTasksCard';
+import { TeamMemberTile } from '@/components/TeamMemberTile';
+import { MyTasksModal } from '@/components/MyTasksModal';
+import type { TaskWithRelations, Contact, ContactWithStats, TeamStatFilter } from '@meeting-task-tool/shared';
 
 // Status display mapping
 const statusDisplay: Record<string, string> = {
@@ -51,7 +56,14 @@ export default function DashboardPage() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [statTasksModalOpen, setStatTasksModalOpen] = useState(false);
   const [selectedStatType, setSelectedStatType] = useState<StatType | null>(null);
-  const [returnToModal, setReturnToModal] = useState<'stat' | 'user' | null>(null);
+  const [returnToModal, setReturnToModal] = useState<'stat' | 'user' | 'team' | 'myTasks' | null>(null);
+  const [contactsWithStats, setContactsWithStats] = useState<ContactWithStats[]>([]);
+  const [teamModalOpen, setTeamModalOpen] = useState(false);
+  const [selectedTeamContact, setSelectedTeamContact] = useState<ContactWithStats | null>(null);
+  const [teamModalFilter, setTeamModalFilter] = useState<TeamStatFilter>('all');
+  const [myTasksModalOpen, setMyTasksModalOpen] = useState(false);
+  const [myTasksFilter, setMyTasksFilter] = useState<'inProgress' | 'overdue' | 'dueToday' | 'completed'>('inProgress');
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   // Bulk selection state
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
@@ -89,10 +101,24 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const loadContactStats = useCallback(async () => {
+    try {
+      const response = await contactsApi.getStats();
+      setContactsWithStats((response as any).contacts || []);
+    } catch (err) {
+      console.error('Failed to load contact stats:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadTasks();
     loadContacts();
-  }, [loadTasks, loadContacts]);
+    loadContactStats();
+    // Load current user email
+    getCurrentUser().then(user => {
+      setCurrentUserEmail(user?.email || null);
+    }).catch(console.error);
+  }, [loadTasks, loadContacts, loadContactStats]);
 
   // Apply filters when tasks or filters change
   useEffect(() => {
@@ -108,9 +134,9 @@ export default function DashboardPage() {
 
     if (filters.assigneeId !== 'all') {
       if (filters.assigneeId === 'unassigned') {
-        result = result.filter((t) => !t.assigneeId);
+        result = result.filter((t) => !t.assignees || t.assignees.length === 0);
       } else {
-        result = result.filter((t) => t.assigneeId === filters.assigneeId);
+        result = result.filter((t) => t.assignees?.some((a) => a.id === filters.assigneeId));
       }
     }
 
@@ -138,9 +164,62 @@ export default function DashboardPage() {
         setStatTasksModalOpen(true);
       } else if (returnToModal === 'user') {
         setUserTasksModalOpen(true);
+      } else if (returnToModal === 'team') {
+        setTeamModalOpen(true);
+      } else if (returnToModal === 'myTasks') {
+        setMyTasksModalOpen(true);
       }
       setReturnToModal(null);
     }
+  };
+
+  // Handle my tasks stat click
+  const handleMyTasksStatClick = (type: 'inProgress' | 'overdue' | 'dueToday' | 'completed') => {
+    setMyTasksFilter(type);
+    setMyTasksModalOpen(true);
+  };
+
+  // Get filtered tasks for my tasks modal (only tasks assigned to current user)
+  const getMyTasksFiltered = () => {
+    const now = new Date();
+    // Filter to only tasks assigned to current user
+    const myTasksOnly = tasks.filter(t => {
+      if (!currentUserEmail) return false;
+      return t.assignees?.some(a => a.email?.toLowerCase() === currentUserEmail.toLowerCase());
+    });
+    switch (myTasksFilter) {
+      case 'inProgress':
+        return myTasksOnly.filter((t) => t.status === 'in_progress');
+      case 'overdue':
+        return myTasksOnly.filter((t) => {
+          if (!t.deadline || t.status === 'completed' || t.status === 'cancelled') return false;
+          return new Date(t.deadline) < now;
+        });
+      case 'dueToday':
+        return myTasksOnly.filter((t) => {
+          if (!t.deadline || t.status === 'completed' || t.status === 'cancelled') return false;
+          const deadline = new Date(t.deadline);
+          return deadline.toDateString() === now.toDateString();
+        });
+      case 'completed':
+        return myTasksOnly.filter((t) => t.status === 'completed');
+      default:
+        return myTasksOnly;
+    }
+  };
+
+  // Handle team member click from TeamStatusCard
+  const handleTeamMemberClick = (contact: ContactWithStats) => {
+    setSelectedTeamContact(contact);
+    setTeamModalFilter('all');
+    setTeamModalOpen(true);
+  };
+
+  // Handle stat badge click from TeamStatusCard
+  const handleTeamStatClick = (contact: ContactWithStats, filter: TeamStatFilter) => {
+    setSelectedTeamContact(contact);
+    setTeamModalFilter(filter);
+    setTeamModalOpen(true);
   };
 
   // Bulk selection handlers
@@ -189,17 +268,16 @@ export default function DashboardPage() {
     clearSelection();
   };
 
-  const handleBulkAssigneeUpdate = async (assigneeId: string | null) => {
-    const assignee = contacts.find((c) => c.id === assigneeId);
+  const handleBulkAssigneesUpdate = async (assigneeIds: string[]) => {
+    const assignees = assigneeIds.map((id) => {
+      const contact = contacts.find((c) => c.id === id);
+      return contact ? { id: contact.id, name: contact.name, email: contact.email } : null;
+    }).filter(Boolean) as { id: string; name: string; email: string | null }[];
+
     setTasks((prev) =>
       prev.map((task) =>
         selectedTaskIds.has(task.id)
-          ? {
-            ...task,
-            assigneeId,
-            assigneeName: assignee?.name || null,
-            assignee: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email } : null,
-          }
+          ? { ...task, assignees }
           : task
       )
     );
@@ -218,6 +296,25 @@ export default function DashboardPage() {
   }).length;
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
   const urgentTasks = tasks.filter((t) => t.priority === 'urgent').length;
+
+  // My Tasks stats - only tasks assigned to current user
+  const isMyTask = (task: TaskWithRelations) => {
+    if (!currentUserEmail) return false;
+    return task.assignees?.some(a => a.email?.toLowerCase() === currentUserEmail.toLowerCase());
+  };
+  const myTasks = tasks.filter(isMyTask);
+  const myTasksInProgress = myTasks.filter((t) => t.status === 'in_progress').length;
+  const myTasksOverdue = myTasks.filter((t) => {
+    if (!t.deadline || t.status === 'completed' || t.status === 'cancelled') return false;
+    return new Date(t.deadline) < new Date();
+  }).length;
+  const myTasksDueToday = myTasks.filter((t) => {
+    if (!t.deadline || t.status === 'completed' || t.status === 'cancelled') return false;
+    const deadline = new Date(t.deadline);
+    const today = new Date();
+    return deadline.toDateString() === today.toDateString();
+  }).length;
+  const myTasksCompleted = myTasks.filter((t) => t.status === 'completed').length;
 
   // Calculate Trends (Last 30 days vs Previous 30 days)
   const now = new Date();
@@ -319,116 +416,74 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Tasks"
-          value={totalTasks}
-          icon={List}
-          color="blue"
-          trend={{ value: Math.abs(createdTrend), label: "vs last month", positive: createdTrend >= 0 }}
-          onIconClick={() => handleStatIconClick('totalTasks')}
-        />
-        <StatCard
-          title="Pending Review"
-          value={pendingReview}
-          icon={CheckCircle2}
-          color="purple"
-          description="Tasks needing attention"
-          onIconClick={() => handleStatIconClick('pendingReview')}
-        />
-        <StatCard
-          title="Upcoming Deadlines"
-          value={upcomingDeadlines}
-          icon={Clock}
-          color="orange"
-          trend={{ value: urgentTasks, label: "urgent tasks", positive: false }}
-          onIconClick={() => handleStatIconClick('upcomingDeadlines')}
-        />
-        <StatCard
-          title="Completed"
-          value={completedTasks}
-          icon={TrendingUp}
-          color="success"
-          trend={{ value: Math.abs(completedTrend), label: "vs last month", positive: completedTrend >= 0 }}
-          onIconClick={() => handleStatIconClick('completed')}
-        />
-      </div>
+      {/* My Tasks Today */}
+      <Card className="border border-border bg-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">My Tasks</CardTitle>
+          <CardDescription>Your task overview for today</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MyTasksCard
+            inProgress={myTasksInProgress}
+            overdue={myTasksOverdue}
+            dueToday={myTasksDueToday}
+            completed={myTasksCompleted}
+            onStatClick={handleMyTasksStatClick}
+          />
+        </CardContent>
+      </Card>
 
-      {/* Activity Overview & Team Status Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <Card className="border border-border bg-card">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Activity Overview</CardTitle>
-                <CardDescription>Recent updates and actions</CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => handleStatIconClick('recentActivity')}
-              >
-                View All
-              </Button>
+      {/* Team Tasks */}
+      <Card className="border border-border bg-card">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="text-lg">Team Tasks</CardTitle>
+              <CardDescription>What your team is working on</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivity.length > 0 ? (
-                recentActivity.map(activity => (
-                  <div
-                    key={activity.id}
-                    className="flex gap-3 cursor-pointer hover:bg-accent/50 p-2 -mx-2 rounded-md transition-colors"
-                    onClick={() => {
-                      const task = tasks.find(t => t.id === activity.id);
-                      if (task) handleTaskClick(task);
-                    }}
-                  >
-                    <div className={`h-2 w-2 mt-2 rounded-full ${activity.color}`} />
-                    <div>
-                      <p className="text-sm font-medium text-foreground line-clamp-1">{activity.text}</p>
-                      <p className="text-xs text-muted-foreground">{activity.time}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No recent activity</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border bg-card">
-          <CardHeader>
-            <CardTitle>Team Status</CardTitle>
-            <CardDescription>Who's working on what</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {contacts.slice(0, 5).map(contact => (
-                <div
+          </div>
+        </CardHeader>
+        <CardContent>
+          {contactsWithStats.length > 0 ? (
+            <div className="flex flex-wrap gap-3">
+              {contactsWithStats.map((contact) => (
+                <TeamMemberTile
                   key={contact.id}
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                  contact={contact}
+                  onClick={() => handleTeamMemberClick(contact)}
+                />
+              ))}
+            </div>
+          ) : contacts.length > 0 ? (
+            <div className="flex flex-wrap gap-3">
+              {contacts.map(contact => (
+                <button
+                  key={contact.id}
+                  className="flex flex-col items-center p-3 rounded-xl border border-border bg-card hover:bg-accent/50 transition-all cursor-pointer min-w-[80px]"
                   onClick={() => {
                     setSelectedContact(contact);
                     setUserTasksModalOpen(true);
                   }}
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-2">
+                    <span className="text-sm font-medium text-muted-foreground">
                       {contact.name.charAt(0)}
-                    </div>
-                    <span className="text-sm font-medium">{contact.name}</span>
+                    </span>
                   </div>
-                  <span className="h-2 w-2 rounded-full bg-green-500" />
-                </div>
+                  <span className="text-xs font-medium truncate max-w-full">
+                    {contact.name.split(' ')[0]}
+                  </span>
+                </button>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No team members yet. Add contacts to see team status.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Main Views Section */}
       <div className="space-y-6">
@@ -563,7 +618,13 @@ export default function DashboardPage() {
                                 )}
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-muted-foreground">{task.assignee?.name || task.assigneeName || 'Unassigned'}</td>
+                            <td className="py-3 px-4 text-muted-foreground">
+                                              {task.assignees && task.assignees.length > 0
+                                                ? task.assignees.length === 1
+                                                  ? task.assignees[0].name
+                                                  : `${task.assignees[0].name} +${task.assignees.length - 1}`
+                                                : 'Unassigned'}
+                                            </td>
                             <td className="py-3 px-4 text-muted-foreground">
                               {task.deadline ? new Date(task.deadline).toLocaleDateString() : '-'}
                             </td>
@@ -647,7 +708,7 @@ export default function DashboardPage() {
         contacts={contacts}
         onUpdateStatus={handleBulkStatusUpdate}
         onUpdatePriority={handleBulkPriorityUpdate}
-        onUpdateAssignee={handleBulkAssigneeUpdate}
+        onUpdateAssignees={handleBulkAssigneesUpdate}
         onClearSelection={clearSelection}
       />
 
@@ -678,7 +739,7 @@ export default function DashboardPage() {
         open={userTasksModalOpen}
         onOpenChange={setUserTasksModalOpen}
         user={selectedContact}
-        tasks={tasks.filter(t => t.assigneeId === selectedContact?.id)}
+        tasks={tasks.filter(t => t.assignees?.some(a => a.id === selectedContact?.id))}
         onTaskClick={(task) => {
           setUserTasksModalOpen(false);
           setReturnToModal('user');
@@ -693,6 +754,29 @@ export default function DashboardPage() {
         onTaskClick={(task) => {
           setStatTasksModalOpen(false);
           setReturnToModal('stat');
+          handleTaskClick(task);
+        }}
+      />
+      <TeamTasksModal
+        open={teamModalOpen}
+        onOpenChange={setTeamModalOpen}
+        contact={selectedTeamContact}
+        tasks={tasks.filter(t => t.assignees?.some(a => a.id === selectedTeamContact?.id))}
+        initialFilter={teamModalFilter}
+        onTaskClick={(task) => {
+          setTeamModalOpen(false);
+          setReturnToModal('team');
+          handleTaskClick(task);
+        }}
+      />
+      <MyTasksModal
+        open={myTasksModalOpen}
+        onOpenChange={setMyTasksModalOpen}
+        filterType={myTasksFilter}
+        tasks={getMyTasksFiltered()}
+        onTaskClick={(task) => {
+          setMyTasksModalOpen(false);
+          setReturnToModal('myTasks');
           handleTaskClick(task);
         }}
       />

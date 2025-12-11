@@ -49,14 +49,20 @@ export interface MeetingWithCount extends Meeting {
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+// Assignee info (contact assigned to a task)
+export interface TaskAssignee {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
 export interface Task {
   id: string;
   meetingId: string;
   userId: string;
   title: string;
   description: string;
-  assigneeId: string | null;
-  assigneeName: string | null;
+  assignees: TaskAssignee[];
   deadline: Date | null;
   status: TaskStatus;
   priority: TaskPriority;
@@ -76,11 +82,6 @@ export interface TaskWithRelations extends Task {
     title: string;
     createdAt: Date;
   };
-  assignee: {
-    id: string;
-    name: string;
-    email: string | null;
-  } | null;
 }
 
 // Meeting with tasks (for detail view)
@@ -95,10 +96,19 @@ export interface CreateMeetingRequest {
   metadata?: Record<string, any>;
 }
 
+export interface CreateTaskRequest {
+  description: string;
+  title?: string;
+  assigneeIds?: string[]; // Array of contact IDs
+  deadline?: string | null; // ISO string
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  meetingId?: string;
+}
+
 export interface UpdateTaskRequest {
   description?: string;
-  assigneeId?: string | null;
-  assigneeName?: string;
+  assigneeIds?: string[]; // Array of contact IDs
   deadline?: string | null; // ISO string
   status?: TaskStatus;
   priority?: TaskPriority;
@@ -114,7 +124,7 @@ export interface CreateContactRequest {
 // Filter types for tasks
 export interface TaskFilters {
   status?: TaskStatus;
-  assigneeId?: string;
+  assigneeId?: string; // Filter by a single assignee (tasks where this person is one of the assignees)
   fromDate?: string; // ISO string
   toDate?: string; // ISO string
   meetingId?: string;
@@ -138,3 +148,20 @@ export interface AuthUser {
   id: string;
   email: string;
 }
+
+// Team member statistics for dashboard
+export interface TeamMemberStats {
+  inProgressCount: number;
+  backlogCount: number;
+  completedCount: number;
+  totalTasks: number;
+  deliveryRate: number;       // Percentage of completed tasks
+  avgBacklogDays: number;     // Average days past deadline for backlog items
+  productivityScore: number;  // Score: completed / (total + backlog) * 100
+}
+
+export interface ContactWithStats extends Contact {
+  stats: TeamMemberStats;
+}
+
+export type TeamStatFilter = 'inProgress' | 'backlog' | 'completed' | 'all';

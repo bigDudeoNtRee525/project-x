@@ -8,8 +8,7 @@ const router = Router();
 // Validation schemas
 const updateTaskSchema = z.object({
   description: z.string().min(1).optional(),
-  assigneeId: z.string().uuid().optional().nullable(),
-  assigneeName: z.string().optional(),
+  assigneeIds: z.array(z.string().uuid()).optional(),
   deadline: z.string().datetime().optional().nullable(),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
@@ -19,7 +18,7 @@ const updateTaskSchema = z.object({
 // Validation schema for creating a task
 const createTaskSchema = z.object({
   description: z.string().min(1, 'Description is required'),
-  assigneeId: z.string().uuid().optional().nullable(),
+  assigneeIds: z.array(z.string().uuid()).optional().default([]),
   deadline: z.string().datetime().optional().nullable(),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).default('pending'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
@@ -27,6 +26,19 @@ const createTaskSchema = z.object({
   categoryId: z.string().uuid().optional().nullable(),
   meetingId: z.string().uuid().optional().nullable(),
 });
+
+// Helper to format assignees from join table
+const formatTaskWithAssignees = (task: any) => {
+  const { assignees, ...rest } = task;
+  return {
+    ...rest,
+    assignees: assignees?.map((a: any) => ({
+      id: a.contact.id,
+      name: a.contact.name,
+      email: a.contact.email,
+    })) || [],
+  };
+};
 
 // Create a new task
 router.post('/', optionalAuthenticate, async (req, res) => {
@@ -37,7 +49,6 @@ router.post('/', optionalAuthenticate, async (req, res) => {
     const newTask = await prisma.task.create({
       data: {
         description: data.description,
-        assigneeId: data.assigneeId ?? undefined,
         deadline: data.deadline ? new Date(data.deadline) : undefined,
         status: data.status,
         priority: data.priority,
@@ -47,6 +58,11 @@ router.post('/', optionalAuthenticate, async (req, res) => {
         userId,
         reviewed: true, // Manually created tasks are considered reviewed
         aiExtracted: false, // Not AI-extracted
+        assignees: {
+          create: data.assigneeIds.map((contactId) => ({
+            contactId,
+          })),
+        },
       },
       include: {
         meeting: {
@@ -55,17 +71,21 @@ router.post('/', optionalAuthenticate, async (req, res) => {
             title: true,
           },
         },
-        assignee: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+        assignees: {
+          include: {
+            contact: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
       },
     });
 
-    return res.status(201).json({ task: newTask });
+    return res.status(201).json({ task: formatTaskWithAssignees(newTask) });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
@@ -93,7 +113,14 @@ router.get('/', optionalAuthenticate, async (req, res) => {
     };
 
     if (status) where.status = status;
-    if (assigneeId) where.assigneeId = assigneeId;
+    // Filter tasks that have a specific assignee (among their assignees)
+    if (assigneeId) {
+      if (assigneeId === 'unassigned') {
+        where.assignees = { none: {} };
+      } else {
+        where.assignees = { some: { contactId: assigneeId } };
+      }
+    }
     if (meetingId) where.meetingId = meetingId;
     if (reviewed !== undefined) where.reviewed = reviewed === 'true';
 
@@ -114,17 +141,21 @@ router.get('/', optionalAuthenticate, async (req, res) => {
             createdAt: true,
           },
         },
-        assignee: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+        assignees: {
+          include: {
+            contact: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
       },
     });
 
-    res.json({ tasks });
+    res.json({ tasks: tasks.map(formatTaskWithAssignees) });
   } catch (error) {
     console.error('Error fetching tasks:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -150,12 +181,24 @@ router.patch('/:id', optionalAuthenticate, async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
+    // Separate assigneeIds from other data
+    const { assigneeIds, ...otherData } = data;
+
     const updatedTask = await prisma.task.update({
       where: { id: taskId },
       data: {
-        ...data,
+        ...otherData,
         reviewed: data.reviewed !== undefined ? data.reviewed : true,
         reviewedAt: data.reviewed !== undefined ? (data.reviewed ? new Date() : null) : undefined,
+        // Update assignees if provided
+        ...(assigneeIds !== undefined && {
+          assignees: {
+            deleteMany: {},
+            create: assigneeIds.map((contactId) => ({
+              contactId,
+            })),
+          },
+        }),
       },
       include: {
         meeting: {
@@ -164,17 +207,21 @@ router.patch('/:id', optionalAuthenticate, async (req, res) => {
             title: true,
           },
         },
-        assignee: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+        assignees: {
+          include: {
+            contact: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
       },
     });
 
-    res.json({ task: updatedTask });
+    res.json({ task: formatTaskWithAssignees(updatedTask) });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });

@@ -9,6 +9,7 @@ import { TaskEditModal } from '@/components/TaskEditModal';
 import { TaskFilters } from '@/components/TaskFilters';
 import { BulkActionBar } from '@/components/BulkActionBar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { InlineTaskSelect } from '@/components/InlineTaskSelect';
 import type { TaskWithRelations, Contact } from '@meeting-task-tool/shared';
 
 // Status display mapping
@@ -92,9 +93,9 @@ export default function TasksPage() {
 
         if (filters.assigneeId !== 'all') {
             if (filters.assigneeId === 'unassigned') {
-                result = result.filter((t) => !t.assigneeId);
+                result = result.filter((t) => !t.assignees || t.assignees.length === 0);
             } else {
-                result = result.filter((t) => t.assigneeId === filters.assigneeId);
+                result = result.filter((t) => t.assignees?.some((a) => a.id === filters.assigneeId));
             }
         }
 
@@ -164,21 +165,39 @@ export default function TasksPage() {
         clearSelection();
     };
 
-    const handleBulkAssigneeUpdate = async (assigneeId: string | null) => {
-        const assignee = contacts.find((c) => c.id === assigneeId);
+    const handleBulkAssigneesUpdate = async (assigneeIds: string[]) => {
+        const assignees = assigneeIds.map((id) => {
+            const contact = contacts.find((c) => c.id === id);
+            return contact ? { id: contact.id, name: contact.name, email: contact.email } : null;
+        }).filter(Boolean) as { id: string; name: string; email: string | null }[];
+
         setTasks((prev) =>
             prev.map((task) =>
                 selectedTaskIds.has(task.id)
-                    ? {
-                        ...task,
-                        assigneeId,
-                        assigneeName: assignee?.name || null,
-                        assignee: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email } : null,
-                    }
+                    ? { ...task, assignees }
                     : task
             )
         );
         clearSelection();
+    };
+
+    // Inline field update handler
+    const handleInlineUpdate = async (taskId: string, field: string, value: string) => {
+        // Optimistic update
+        setTasks((prev) =>
+            prev.map((task) =>
+                task.id === taskId ? { ...task, [field]: value } : task
+            )
+        );
+
+        try {
+            await tasksApi.update(taskId, { [field]: value });
+        } catch (error) {
+            // Rollback on error - reload tasks
+            console.error('Failed to update task:', error);
+            loadTasks();
+            throw error;
+        }
     };
 
     const isAllSelected = filteredTasks.length > 0 && selectedTaskIds.size === filteredTasks.length;
@@ -300,27 +319,31 @@ export default function TasksPage() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="py-3 px-4 text-muted-foreground">{task.assignee?.name || task.assigneeName || 'Unassigned'}</td>
+                                                <td className="py-3 px-4 text-muted-foreground">
+                                                    {task.assignees && task.assignees.length > 0
+                                                        ? task.assignees.length === 1
+                                                            ? task.assignees[0].name
+                                                            : `${task.assignees[0].name} +${task.assignees.length - 1}`
+                                                        : 'Unassigned'}
+                                                </td>
                                                 <td className="py-3 px-4 text-muted-foreground">
                                                     {task.deadline ? new Date(task.deadline).toLocaleDateString() : '-'}
                                                 </td>
-                                                <td className="py-3 px-4">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${task.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                                        task.status === 'in_progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                            task.status === 'cancelled' ? 'bg-muted text-muted-foreground border-border' :
-                                                                'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                                                        }`}>
-                                                        {statusDisplay[task.status] || task.status}
-                                                    </span>
+                                                <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                                                    <InlineTaskSelect
+                                                        type="status"
+                                                        value={task.status}
+                                                        taskId={task.id}
+                                                        onUpdate={handleInlineUpdate}
+                                                    />
                                                 </td>
-                                                <td className="py-3 px-4">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${task.priority === 'urgent' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                        task.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                                                            task.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                                                'bg-green-500/10 text-green-500 border-green-500/20'
-                                                        }`}>
-                                                        {priorityDisplay[task.priority] || task.priority}
-                                                    </span>
+                                                <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                                                    <InlineTaskSelect
+                                                        type="priority"
+                                                        value={task.priority}
+                                                        taskId={task.id}
+                                                        onUpdate={handleInlineUpdate}
+                                                    />
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <Button
@@ -350,7 +373,7 @@ export default function TasksPage() {
                 contacts={contacts}
                 onUpdateStatus={handleBulkStatusUpdate}
                 onUpdatePriority={handleBulkPriorityUpdate}
-                onUpdateAssignee={handleBulkAssigneeUpdate}
+                onUpdateAssignees={handleBulkAssigneesUpdate}
                 onClearSelection={clearSelection}
             />
 

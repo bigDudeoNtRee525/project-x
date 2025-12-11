@@ -29,9 +29,12 @@ export function generateICSEvent(task: TaskWithRelations): string {
 
     const uid = `task-${task.id}@meeting-task-tool`;
     const summary = escapeText(task.description);
+    const assigneeText = task.assignees && task.assignees.length > 0
+        ? task.assignees.map(a => a.name).join(', ')
+        : 'Unassigned';
     const description = escapeText(
         `Priority: ${task.priority}\\nStatus: ${task.status}\\n` +
-        `Assignee: ${task.assigneeName || task.assignee?.name || 'Unassigned'}\\n` +
+        `Assignee: ${assigneeText}\\n` +
         (task.meeting?.title ? `From meeting: ${task.meeting.title}` : '')
     );
 
@@ -100,11 +103,14 @@ export function generateGoogleCalendarURL(task: TaskWithRelations): string | nul
         return date.toISOString().split('T')[0].replace(/-/g, '');
     };
 
+    const assigneeText = task.assignees && task.assignees.length > 0
+        ? task.assignees.map(a => a.name).join(', ')
+        : 'Unassigned';
     const params = new URLSearchParams({
         action: 'TEMPLATE',
         text: task.description,
         dates: `${formatDate(deadline)}/${formatDate(nextDay)}`,
-        details: `Priority: ${task.priority}\nStatus: ${task.status}\nAssignee: ${task.assigneeName || task.assignee?.name || 'Unassigned'}`,
+        details: `Priority: ${task.priority}\nStatus: ${task.status}\nAssignee: ${assigneeText}`,
     });
 
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -119,6 +125,9 @@ export function generateOutlookCalendarURL(task: TaskWithRelations): string | nu
     const deadline = new Date(task.deadline);
     const nextDay = new Date(deadline.getTime() + 24 * 60 * 60 * 1000);
 
+    const assigneeText = task.assignees && task.assignees.length > 0
+        ? task.assignees.map(a => a.name).join(', ')
+        : 'Unassigned';
     const params = new URLSearchParams({
         path: '/calendar/action/compose',
         rru: 'addevent',
@@ -126,7 +135,7 @@ export function generateOutlookCalendarURL(task: TaskWithRelations): string | nu
         startdt: deadline.toISOString().split('T')[0],
         enddt: nextDay.toISOString().split('T')[0],
         allday: 'true',
-        body: `Priority: ${task.priority}\nStatus: ${task.status}\nAssignee: ${task.assigneeName || task.assignee?.name || 'Unassigned'}`,
+        body: `Priority: ${task.priority}\nStatus: ${task.status}\nAssignee: ${assigneeText}`,
     });
 
     return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;

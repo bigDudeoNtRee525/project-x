@@ -59,7 +59,9 @@ export function AnalyticsPanel({ tasks }: AnalyticsPanelProps) {
             acc.priorityCounts[task.priority] = (acc.priorityCounts[task.priority] || 0) + 1;
 
             // 3. Assignee Counts & Person Stats
-            const assigneeName = task.assigneeName || task.assignee?.name || 'Unassigned';
+            const assigneeName = task.assignees && task.assignees.length > 0
+                ? task.assignees.map(a => a.name).join(', ')
+                : 'Unassigned';
 
             // Assignee Counts
             acc.assigneeCounts[assigneeName] = (acc.assigneeCounts[assigneeName] || 0) + 1;

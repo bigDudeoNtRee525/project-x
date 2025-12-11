@@ -295,7 +295,11 @@ export default function MeetingDetailPage() {
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                                    <span>{task.assigneeName || 'Unassigned'}</span>
+                                                    <span>
+                                                        {task.assignees && task.assignees.length > 0
+                                                            ? task.assignees.map((a) => a.name).join(', ')
+                                                            : 'Unassigned'}
+                                                    </span>
                                                     {task.deadline && (
                                                         <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
                                                     )}

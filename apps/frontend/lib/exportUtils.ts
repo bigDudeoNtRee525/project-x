@@ -16,12 +16,15 @@ export function exportTasksToCSV(tasks: TaskWithRelations[]): string {
     ];
 
     const rows = tasks.map((task) => {
+        const assigneeText = task.assignees && task.assignees.length > 0
+            ? task.assignees.map(a => a.name).join('; ')
+            : 'Unassigned';
         return [
             task.id,
             `"${task.description.replace(/"/g, '""')}"`, // Escape quotes
             task.status,
             task.priority,
-            task.assigneeName || task.assignee?.name || 'Unassigned',
+            assigneeText,
             task.deadline ? new Date(task.deadline).toLocaleDateString() : '',
             new Date(task.createdAt).toLocaleDateString(),
             `"${(task.meeting?.title || '').replace(/"/g, '""')}"`,
@@ -58,6 +61,11 @@ export function generateWeeklyReport(
         return deadline >= endDate && deadline <= nextWeek;
     });
 
+    const getAssigneeText = (t: TaskWithRelations) =>
+        t.assignees && t.assignees.length > 0
+            ? t.assignees.map(a => a.name).join(', ')
+            : 'Unassigned';
+
     const report = [
         `# Weekly Progress Report`,
         `**Period:** ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`,
@@ -68,8 +76,7 @@ export function generateWeeklyReport(
             : completedTasks
                 .map(
                     (t) =>
-                        `- **${t.description}** (Assignee: ${t.assigneeName || t.assignee?.name || 'Unassigned'
-                        })`
+                        `- **${t.description}** (Assignee: ${getAssigneeText(t)})`
                 )
                 .join('\n'),
         '',
@@ -90,7 +97,7 @@ export function generateWeeklyReport(
                 .map(
                     (t) =>
                         `- **${new Date(t.deadline!).toLocaleDateString()}**: ${t.description
-                        } (${t.assigneeName || t.assignee?.name || 'Unassigned'})`
+                        } (${getAssigneeText(t)})`
                 )
                 .join('\n'),
         '',

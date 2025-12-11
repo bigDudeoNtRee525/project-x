@@ -228,7 +228,7 @@ function QuarterlyObjectiveRow({
                                         <span className={`flex-1 truncate ${task.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-700'}`}>
                                             {task.description}
                                         </span>
-                                        <span className="text-gray-400">{task.assigneeName || 'Unassigned'}</span>
+                                        <span className="text-gray-400">{task.assignees && task.assignees.length > 0 ? task.assignees[0].name : 'Unassigned'}</span>
                                     </div>
                                 ))}
                             </div>
