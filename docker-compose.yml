@@ -38,6 +38,7 @@ services:
       context: .
       dockerfile: ./apps/frontend/Dockerfile
     network_mode: host
+    working_dir: /app/apps/frontend
     command: npm run dev
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
