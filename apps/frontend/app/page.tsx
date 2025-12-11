@@ -1,34 +1,80 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, CheckCircle, Upload, Users } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
+import { getSupabaseClient } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const [processingAuth, setProcessingAuth] = useState(false);
+
+  // Handle Supabase auth callback tokens from URL hash
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      // Check if we have auth tokens in the URL hash
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          setProcessingAuth(true);
+          try {
+            const supabase = getSupabaseClient();
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (error) {
+              console.error('Error setting session:', error);
+            } else {
+              // Clear the hash from URL
+              window.history.replaceState(null, '', window.location.pathname);
+              // Check auth and redirect
+              await checkAuth();
+              router.push('/dashboard');
+              return;
+            }
+          } catch (err) {
+            console.error('Auth callback error:', err);
+          } finally {
+            setProcessingAuth(false);
+          }
+        }
+      }
+    };
+
+    handleAuthCallback();
+  }, [checkAuth, router]);
 
   useEffect(() => {
     // Redirect to dashboard only if authenticated
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && !processingAuth && isAuthenticated) {
       router.push('/dashboard');
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, processingAuth, router]);
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    if (!processingAuth) {
+      checkAuth();
+    }
+  }, [checkAuth, processingAuth]);
 
-  if (isLoading) {
+  if (isLoading || processingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">
+            {processingAuth ? 'Completing sign in...' : 'Loading...'}
+          </p>
         </div>
       </div>
     );
