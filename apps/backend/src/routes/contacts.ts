@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
+import { loadTeamContext, buildPersonalAndTeamWhere } from '../middleware/team';
 import { prisma } from '../lib/prisma';
 import { z } from 'zod';
 
@@ -10,17 +11,33 @@ const createContactSchema = z.object({
   name: z.string().min(1).max(255),
   email: z.string().email().optional().or(z.literal('')),
   role: z.string().max(100).optional(),
+  scope: z.enum(['personal', 'team']).optional().default('personal'),
 });
 
-// List user's contacts
-router.get('/', authenticate, async (req, res) => {
+// List user's contacts (personal + team)
+router.get('/', authenticate, loadTeamContext, async (req, res) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
+    const { scope } = req.query;
+    const userId = req.user.id;
+    const teamId = req.team?.teamId;
+
+    // Build where clause based on scope
+    let where: any;
+    if (scope === 'personal') {
+      where = { userId, teamId: null };
+    } else if (scope === 'team' && teamId) {
+      where = { teamId };
+    } else {
+      // Default: all (personal + team)
+      where = buildPersonalAndTeamWhere(userId, teamId);
+    }
+
     const contacts = await prisma.contact.findMany({
-      where: { userId: req.user.id },
+      where,
       orderBy: { name: 'asc' },
     });
 
@@ -31,17 +48,31 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// Get contacts with task statistics
-router.get('/stats', authenticate, async (req, res) => {
+// Get contacts with task statistics (personal + team)
+router.get('/stats', authenticate, loadTeamContext, async (req, res) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
     const now = new Date();
+    const { scope } = req.query;
+    const userId = req.user.id;
+    const teamId = req.team?.teamId;
+
+    // Build where clause based on scope
+    let where: any;
+    if (scope === 'personal') {
+      where = { userId, teamId: null };
+    } else if (scope === 'team' && teamId) {
+      where = { teamId };
+    } else {
+      // Default: all (personal + team)
+      where = buildPersonalAndTeamWhere(userId, teamId);
+    }
 
     const contactsWithTasks = await prisma.contact.findMany({
-      where: { userId: req.user.id },
+      where,
       orderBy: { name: 'asc' },
       include: {
         taskAssignments: {
@@ -116,7 +147,7 @@ router.get('/stats', authenticate, async (req, res) => {
 });
 
 // Create new contact
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, loadTeamContext, async (req, res) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -124,9 +155,13 @@ router.post('/', authenticate, async (req, res) => {
   try {
     const data = createContactSchema.parse(req.body);
 
+    // Determine teamId based on scope
+    const teamId = data.scope === 'team' && req.team?.teamId ? req.team.teamId : null;
+
     const contact = await prisma.contact.create({
       data: {
         userId: req.user.id,
+        teamId,
         name: data.name,
         email: data.email || null,
         role: data.role || null,

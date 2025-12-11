@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { optionalAuthenticate } from '../middleware/auth';
+import { loadTeamContext, buildPersonalAndTeamWhere } from '../middleware/team';
 import { prisma } from '../lib/prisma';
 import { z } from 'zod';
-import { deepSeekService, type ExtractedTask } from '../services/ai.service';
+import { deepSeekService } from '../services/ai.service';
 
 const router = Router();
 
@@ -11,18 +12,23 @@ const createMeetingSchema = z.object({
   title: z.string().min(1).max(500),
   transcript: z.string().min(1),
   metadata: z.object({}).passthrough().optional(),
+  scope: z.enum(['personal', 'team']).optional().default('personal'),
 });
 
 // Create a new meeting
-router.post('/', optionalAuthenticate, async (req, res) => {
+router.post('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
 
   try {
     const data = createMeetingSchema.parse(req.body);
     const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
 
+    // Determine teamId based on scope
+    const teamId = data.scope === 'team' && req.team?.teamId ? req.team.teamId : null;
+
     const meeting = await prisma.meeting.create({
       data: {
         userId,
+        teamId,
         title: data.title,
         transcript: data.transcript,
         metadata: data.metadata || {},
@@ -78,6 +84,7 @@ router.post('/', optionalAuthenticate, async (req, res) => {
               data: {
                 meetingId: meeting.id,
                 userId,
+                teamId, // Tasks inherit teamId from meeting
                 title: t.title,
                 description: t.description || '',
                 priority: t.priority,
@@ -127,12 +134,27 @@ router.post('/', optionalAuthenticate, async (req, res) => {
   }
 });
 
-// List user's meetings
-router.get('/', optionalAuthenticate, async (req, res) => {
+// List user's meetings (personal + team)
+router.get('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
 
   try {
+    const { scope } = req.query;
+    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const teamId = req.team?.teamId;
+
+    // Build where clause based on scope
+    let where: any;
+    if (scope === 'personal') {
+      where = { userId, teamId: null };
+    } else if (scope === 'team' && teamId) {
+      where = { teamId };
+    } else {
+      // Default: all (personal + team)
+      where = buildPersonalAndTeamWhere(userId, teamId);
+    }
+
     const meetings = await prisma.meeting.findMany({
-      where: { userId: req.user?.id || '00000000-0000-0000-0000-000000000000' },
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -140,6 +162,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         processed: true,
         processedAt: true,
         createdAt: true,
+        teamId: true,
         _count: {
           select: { tasks: true },
         },
@@ -154,13 +177,16 @@ router.get('/', optionalAuthenticate, async (req, res) => {
 });
 
 // Get meeting details with tasks
-router.get('/:id', optionalAuthenticate, async (req, res) => {
+router.get('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => {
 
   try {
+    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const teamId = req.team?.teamId;
+
     const meeting = await prisma.meeting.findFirst({
       where: {
         id: req.params.id,
-        userId: req.user?.id || '00000000-0000-0000-0000-000000000000', // Ensure user owns this meeting
+        ...buildPersonalAndTeamWhere(userId, teamId),
       },
       include: {
         tasks: {
@@ -210,16 +236,17 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // Reprocess a meeting (re-run AI extraction)
-router.post('/:id/reprocess', optionalAuthenticate, async (req, res) => {
+router.post('/:id/reprocess', optionalAuthenticate, loadTeamContext, async (req, res) => {
   try {
     const meetingId = req.params.id as string;
     const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const teamId = req.team?.teamId;
 
-    // Verify meeting exists and belongs to user
+    // Verify meeting exists and belongs to user or their team
     const meeting = await prisma.meeting.findFirst({
       where: {
         id: meetingId,
-        userId,
+        ...buildPersonalAndTeamWhere(userId, teamId),
       },
     });
 
@@ -291,6 +318,7 @@ router.post('/:id/reprocess', optionalAuthenticate, async (req, res) => {
               data: {
                 meetingId,
                 userId,
+                teamId: meeting.teamId, // Tasks inherit teamId from meeting
                 title: t.title,
                 description: t.description || '',
                 priority: t.priority,
@@ -332,12 +360,15 @@ router.post('/:id/reprocess', optionalAuthenticate, async (req, res) => {
 });
 
 // Delete a meeting
-router.delete('/:id', optionalAuthenticate, async (req, res) => {
+router.delete('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => {
   try {
+    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const teamId = req.team?.teamId;
+
     const meeting = await prisma.meeting.findFirst({
       where: {
         id: req.params.id,
-        userId: req.user?.id || '00000000-0000-0000-0000-000000000000',
+        ...buildPersonalAndTeamWhere(userId, teamId),
       },
     });
 
@@ -357,16 +388,17 @@ router.delete('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // Confirm all tasks for a meeting
-router.post('/:id/confirm-tasks', optionalAuthenticate, async (req, res) => {
+router.post('/:id/confirm-tasks', optionalAuthenticate, loadTeamContext, async (req, res) => {
   try {
     const meetingId = req.params.id;
     const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const teamId = req.team?.teamId;
 
-    // Verify meeting exists and belongs to user
+    // Verify meeting exists and belongs to user or their team
     const meeting = await prisma.meeting.findFirst({
       where: {
         id: meetingId,
-        userId,
+        ...buildPersonalAndTeamWhere(userId, teamId),
       },
     });
 
@@ -378,7 +410,6 @@ router.post('/:id/confirm-tasks', optionalAuthenticate, async (req, res) => {
     const result = await prisma.task.updateMany({
       where: {
         meetingId,
-        userId,
         reviewed: false,
       },
       data: {

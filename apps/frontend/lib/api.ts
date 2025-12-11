@@ -395,3 +395,28 @@ export const categoriesApi = {
 export const healthApi = {
   check: () => api.get('/health'),
 };
+
+// ============================================================================
+// TEAM API
+// ============================================================================
+
+export const teamsApi = {
+  getCurrent: () => api.get('/teams/current'),
+  create: (data: { name: string }) => api.post('/teams', data),
+  update: (id: string, data: { name?: string }) => api.patch(`/teams/${id}`, data),
+  delete: (id: string) => api.delete(`/teams/${id}`),
+  leave: (id: string) => api.post(`/teams/${id}/leave`),
+  updateMemberRole: (teamId: string, userId: string, role: string) =>
+    api.post(`/teams/${teamId}/members/${userId}/role`, { role }),
+  removeMember: (teamId: string, userId: string) =>
+    api.delete(`/teams/${teamId}/members/${userId}`),
+};
+
+export const invitesApi = {
+  sendEmail: (email: string) => api.post('/invites/email', { email }),
+  generateLink: () => api.post('/invites/link'),
+  getByToken: (token: string) => api.get(`/invites/${token}`),
+  accept: (token: string) => api.post(`/invites/${token}/accept`),
+  list: () => api.get('/invites'),
+  revoke: (id: string) => api.delete(`/invites/${id}`),
+};

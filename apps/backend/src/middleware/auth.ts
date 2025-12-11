@@ -37,7 +37,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 }
 
 // Optional middleware for routes that can work with or without authentication
-export async function optionalAuthenticate(req: Request, res: Response, next: NextFunction) {
+export async function optionalAuthenticate(req: Request, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

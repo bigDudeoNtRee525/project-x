@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { optionalAuthenticate } from '../middleware/auth';
+import { loadTeamContext, buildPersonalAndTeamWhere } from '../middleware/team';
 import { prisma } from '../lib/prisma';
 import { z } from 'zod';
 
@@ -25,6 +26,7 @@ const createTaskSchema = z.object({
   goalId: z.string().uuid().optional().nullable(),
   categoryId: z.string().uuid().optional().nullable(),
   meetingId: z.string().uuid().optional().nullable(),
+  scope: z.enum(['personal', 'team']).optional().default('personal'),
 });
 
 // Helper to format assignees from join table
@@ -41,10 +43,13 @@ const formatTaskWithAssignees = (task: any) => {
 };
 
 // Create a new task
-router.post('/', optionalAuthenticate, async (req, res) => {
+router.post('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
   try {
     const data = createTaskSchema.parse(req.body);
     const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+
+    // Determine teamId based on scope
+    const teamId = data.scope === 'team' && req.team?.teamId ? req.team.teamId : null;
 
     const newTask = await prisma.task.create({
       data: {
@@ -56,6 +61,7 @@ router.post('/', optionalAuthenticate, async (req, res) => {
         categoryId: data.categoryId ?? undefined,
         meetingId: data.meetingId ?? undefined,
         userId,
+        teamId,
         reviewed: true, // Manually created tasks are considered reviewed
         aiExtracted: false, // Not AI-extracted
         assignees: {
@@ -95,8 +101,8 @@ router.post('/', optionalAuthenticate, async (req, res) => {
   }
 });
 
-// List tasks with filters
-router.get('/', optionalAuthenticate, async (req, res) => {
+// List tasks with filters (personal + team data)
+router.get('/', optionalAuthenticate, loadTeamContext, async (req, res) => {
 
   try {
     const {
@@ -106,11 +112,22 @@ router.get('/', optionalAuthenticate, async (req, res) => {
       toDate,
       meetingId,
       reviewed,
+      scope, // 'personal', 'team', or 'all' (default)
     } = req.query;
 
-    const where: any = {
-      userId: req.user?.id || '00000000-0000-0000-0000-000000000000',
-    };
+    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const teamId = req.team?.teamId;
+
+    // Build where clause based on scope
+    let where: any;
+    if (scope === 'personal') {
+      where = { userId, teamId: null };
+    } else if (scope === 'team' && teamId) {
+      where = { teamId };
+    } else {
+      // Default: all (personal + team)
+      where = buildPersonalAndTeamWhere(userId, teamId);
+    }
 
     if (status) where.status = status;
     // Filter tasks that have a specific assignee (among their assignees)
@@ -163,17 +180,19 @@ router.get('/', optionalAuthenticate, async (req, res) => {
 });
 
 // Update task
-router.patch('/:id', optionalAuthenticate, async (req, res) => {
+router.patch('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => {
 
   try {
     const data = updateTaskSchema.parse(req.body);
     const taskId = req.params.id;
+    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const teamId = req.team?.teamId;
 
-    // Verify task belongs to user
+    // Verify task belongs to user (personal) or their team
     const existingTask = await prisma.task.findFirst({
       where: {
         id: taskId,
-        userId: req.user?.id || '00000000-0000-0000-0000-000000000000',
+        ...buildPersonalAndTeamWhere(userId, teamId),
       },
     });
 
@@ -232,16 +251,18 @@ router.patch('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // Mark task as reviewed
-router.put('/:id/review', optionalAuthenticate, async (req, res) => {
+router.put('/:id/review', optionalAuthenticate, loadTeamContext, async (req, res) => {
 
   try {
     const taskId = req.params.id;
+    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const teamId = req.team?.teamId;
 
-    // Verify task belongs to user
+    // Verify task belongs to user (personal) or their team
     const existingTask = await prisma.task.findFirst({
       where: {
         id: taskId,
-        userId: req.user?.id || '00000000-0000-0000-0000-000000000000',
+        ...buildPersonalAndTeamWhere(userId, teamId),
       },
     });
 
@@ -265,15 +286,17 @@ router.put('/:id/review', optionalAuthenticate, async (req, res) => {
 });
 
 // Delete a task
-router.delete('/:id', optionalAuthenticate, async (req, res) => {
+router.delete('/:id', optionalAuthenticate, loadTeamContext, async (req, res) => {
   try {
     const taskId = req.params.id;
+    const userId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const teamId = req.team?.teamId;
 
-    // Verify task belongs to user
+    // Verify task belongs to user (personal) or their team
     const existingTask = await prisma.task.findFirst({
       where: {
         id: taskId,
-        userId: req.user?.id || '00000000-0000-0000-0000-000000000000',
+        ...buildPersonalAndTeamWhere(userId, teamId),
       },
     });
 

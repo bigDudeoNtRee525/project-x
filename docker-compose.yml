@@ -17,29 +17,11 @@ services:
       timeout: 5s
       retries: 5
 
-  n8n:
-    image: n8nio/n8n
-    ports:
-      - "5678:5678"
-    environment:
-      - N8N_BASIC_AUTH_ACTIVE=false
-      - N8N_WEBHOOK_URL=http://localhost:5678/
-      - NODE_ENV=production
-    volumes:
-      - n8n_data:/home/node/.n8n
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   backend:
     build:
       context: .
       dockerfile: ./apps/backend/Dockerfile
-    # --- FIX APPLIED HERE ---
-    # 1. 'npx prisma generate' runs first to download the correct OpenSSL engine.
-    # 2. 'npm run dev' runs the source code directly (fixing the "missing dist/server.js" error).
     command: /bin/sh -c "npx prisma generate && npm run dev"
-    # ------------------------
     ports:
       - "3001:3001"
     environment:
@@ -57,9 +39,9 @@ services:
       context: .
       dockerfile: ./apps/frontend/Dockerfile
     ports:
-      - "3002:3000"
+      - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://46.62.227.208:3001/api/v1
+      - NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
       - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     depends_on:
@@ -70,4 +52,3 @@ services:
 
 volumes:
   postgres_data:
-  n8n_data:

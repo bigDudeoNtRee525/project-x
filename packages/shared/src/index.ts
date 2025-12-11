@@ -19,6 +19,7 @@ export interface User {
 export interface Contact {
   id: string;
   userId: string;
+  teamId: string | null;
   name: string;
   email: string | null;
   role: string | null;
@@ -30,6 +31,7 @@ export interface Contact {
 export interface Meeting {
   id: string;
   userId: string;
+  teamId: string | null;
   title: string;
   transcript: string;
   processed: boolean;
@@ -60,6 +62,7 @@ export interface Task {
   id: string;
   meetingId: string;
   userId: string;
+  teamId: string | null;
   title: string;
   description: string;
   assignees: TaskAssignee[];
@@ -94,6 +97,7 @@ export interface CreateMeetingRequest {
   title: string;
   transcript: string;
   metadata?: Record<string, any>;
+  scope?: ResourceScope;
 }
 
 export interface CreateTaskRequest {
@@ -104,6 +108,7 @@ export interface CreateTaskRequest {
   status?: TaskStatus;
   priority?: TaskPriority;
   meetingId?: string;
+  scope?: ResourceScope;
 }
 
 export interface UpdateTaskRequest {
@@ -119,6 +124,7 @@ export interface CreateContactRequest {
   name: string;
   email?: string;
   role?: string;
+  scope?: ResourceScope;
 }
 
 // Filter types for tasks
@@ -129,6 +135,7 @@ export interface TaskFilters {
   toDate?: string; // ISO string
   meetingId?: string;
   reviewed?: boolean;
+  scope?: 'personal' | 'team' | 'all'; // Filter by scope
 }
 
 // Gantt task format for Frappe Gantt
@@ -148,6 +155,72 @@ export interface AuthUser {
   id: string;
   email: string;
 }
+
+// Team types
+export interface Team {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type TeamRole = 'owner' | 'member';
+
+export interface TeamMember {
+  id: string;
+  name: string | null;
+  email: string;
+  role: TeamRole;
+  joinedAt: Date;
+}
+
+export interface TeamWithMembers extends Team {
+  role: TeamRole;
+  members: TeamMember[];
+}
+
+export interface TeamInvite {
+  id: string;
+  teamId: string;
+  type: 'email' | 'link';
+  email: string | null;
+  token: string;
+  expiresAt: Date;
+  createdAt: Date;
+}
+
+export interface TeamInviteDetails {
+  id: string;
+  type: 'email' | 'link';
+  team: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  invitedBy: string;
+  expiresAt: Date;
+}
+
+// Request types for team operations
+export interface CreateTeamRequest {
+  name: string;
+}
+
+export interface UpdateTeamRequest {
+  name?: string;
+}
+
+export interface SendEmailInviteRequest {
+  email: string;
+}
+
+export interface UpdateMemberRoleRequest {
+  role: TeamRole;
+}
+
+// Scope for creating resources
+export type ResourceScope = 'personal' | 'team';
 
 // Team member statistics for dashboard
 export interface TeamMemberStats {

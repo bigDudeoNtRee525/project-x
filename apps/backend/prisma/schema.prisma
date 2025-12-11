@@ -3,13 +3,67 @@
 
 generator client {
   provider      = "prisma-client-js"
-  // Prisma will auto-detect the Debian environment (debian-openssl-3.0.x)
-  binaryTargets = ["native"]
+  // Binary targets for local development and Docker production (Debian slim)
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// Team (workspace for collaborative features)
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  members    TeamMember[]
+  invites    TeamInvite[]
+  contacts   Contact[]
+  meetings   Meeting[]
+  tasks      Task[]
+  goals      Goal[]
+  categories Category[]
+
+  @@map("teams")
+}
+
+// Team membership (user belongs to one team)
+model TeamMember {
+  id       String   @id @default(uuid())
+  teamId   String   @map("team_id")
+  userId   String   @unique @map("user_id")
+  role     String   @default("member") // "owner" or "member"
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("team_members")
+}
+
+// Team invitations (email or link-based)
+model TeamInvite {
+  id        String    @id @default(uuid())
+  teamId    String    @map("team_id")
+  type      String    // "email" or "link"
+  email     String?
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  usedById  String?   @map("used_by_id")
+  createdBy String    @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("team_invites")
 }
 
 // User profile linked to Supabase auth user
@@ -22,11 +76,12 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  contacts   Contact[]
-  meetings   Meeting[]
-  tasks      Task[]
-  goals      Goal[]
-  categories Category[]
+  teamMembership TeamMember?
+  contacts       Contact[]
+  meetings       Meeting[]
+  tasks          Task[]
+  goals          Goal[]
+  categories     Category[]
 
   @@map("users")
 }
@@ -35,6 +90,7 @@ model User {
 model Contact {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
+  teamId    String?  @map("team_id")
   name      String
   email     String?
   role      String?
@@ -43,6 +99,7 @@ model Contact {
 
   // Relations
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team            Team?          @relation(fields: [teamId], references: [id], onDelete: Cascade)
   taskAssignments TaskAssignee[]
 
   @@map("contacts")
@@ -52,6 +109,7 @@ model Contact {
 model Meeting {
   id          String    @id @default(uuid())
   userId      String    @map("user_id")
+  teamId      String?   @map("team_id")
   title       String
   transcript  String    @db.Text
   processed   Boolean   @default(false)
@@ -61,6 +119,7 @@ model Meeting {
 
   // Relations
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team  Team?  @relation(fields: [teamId], references: [id], onDelete: Cascade)
   tasks Task[]
 
   @@map("meetings")
@@ -71,6 +130,7 @@ model Task {
   id          String    @id @default(uuid())
   meetingId   String?   @map("meeting_id")
   userId      String    @map("user_id")
+  teamId      String?   @map("team_id")
   title       String    @default("")
   description String    @db.Text
   deadline    DateTime?
@@ -85,6 +145,7 @@ model Task {
   // Relations
   meeting   Meeting?       @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team?          @relation(fields: [teamId], references: [id], onDelete: Cascade)
   assignees TaskAssignee[]
   category  Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   goal      Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
@@ -114,6 +175,7 @@ model TaskAssignee {
 model Goal {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
+  teamId    String?  @map("team_id")
   title     String
   type      String // YEARLY, QUARTERLY
   parentId  String?  @map("parent_id")
@@ -122,6 +184,7 @@ model Goal {
 
   // Relations
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team       Team?      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   parent     Goal?      @relation("GoalHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children   Goal[]     @relation("GoalHierarchy")
   categories Category[]
@@ -134,6 +197,7 @@ model Goal {
 model Category {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
+  teamId    String?  @map("team_id")
   name      String
   goalId    String?  @map("goal_id")
   createdAt DateTime @default(now()) @map("created_at")
@@ -141,6 +205,7 @@ model Category {
 
   // Relations
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team  Team?  @relation(fields: [teamId], references: [id], onDelete: Cascade)
   goal  Goal?  @relation(fields: [goalId], references: [id], onDelete: SetNull)
   tasks Task[]
 

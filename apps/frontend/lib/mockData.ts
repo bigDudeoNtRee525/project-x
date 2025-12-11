@@ -114,6 +114,7 @@ export const mockMeetings: MeetingWithCount[] = [
     {
         id: 'meeting-1',
         userId: 'mock-user',
+        teamId: null,
         title: 'Q4 Product Planning Session',
         transcript: `Meeting started at 10:00 AM
 
@@ -145,6 +146,7 @@ Meeting ended at 11:30 AM`,
     {
         id: 'meeting-2',
         userId: 'mock-user',
+        teamId: null,
         title: 'Sprint Retrospective - Week 48',
         transcript: `Sprint Retrospective
 
@@ -172,6 +174,7 @@ Next steps discussed for the upcoming sprint.`,
     {
         id: 'meeting-3',
         userId: 'mock-user',
+        teamId: null,
         title: 'Client Feedback Review',
         transcript: `Client meeting notes:
 
@@ -193,6 +196,7 @@ Marcus to evaluate mobile app feasibility.`,
     {
         id: 'meeting-4',
         userId: 'mock-user',
+        teamId: null,
         title: 'Technical Architecture Discussion',
         transcript: `Architecture review meeting:
 
@@ -218,6 +222,7 @@ Tasks assigned:
     {
         id: 'meeting-5',
         userId: 'mock-user',
+        teamId: null,
         title: 'Weekly Team Standup',
         transcript: `Standup notes - Dec 5
 
@@ -240,6 +245,7 @@ No blockers reported. Team aligned on priorities.`,
     {
         id: 'meeting-6',
         userId: 'mock-user',
+        teamId: null,
         title: 'Budget Planning 2025',
         transcript: `Budget discussion for next fiscal year. Pending AI processing to extract action items.`,
         processed: false,
@@ -282,6 +288,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Optimize database queries',
         meetingId: 'meeting-1',
         userId: 'mock-user',
+        teamId: null,
         description: 'Optimize database queries for improved performance',
         deadline: new Date('2024-12-10'),
         status: 'in_progress',
@@ -304,9 +311,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Deliver dashboard redesign mockups',
         meetingId: 'meeting-1',
         userId: 'mock-user',
+        teamId: null,
         description: 'Deliver dashboard redesign mockups',
-        
-        
         deadline: new Date('2024-12-06'),
         status: 'completed',
         priority: 'high',
@@ -324,9 +330,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Set up performance testing suite',
         meetingId: 'meeting-1',
         userId: 'mock-user',
+        teamId: null,
         description: 'Set up performance testing suite',
-        
-        
         deadline: new Date('2024-12-15'),
         status: 'pending',
         priority: 'medium',
@@ -344,9 +349,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Review API architecture',
         meetingId: 'meeting-1',
         userId: 'mock-user',
+        teamId: null,
         description: 'Review API architecture and propose improvements',
-        
-        
         deadline: new Date('2024-12-12'),
         status: 'pending',
         priority: 'high',
@@ -365,9 +369,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Create documentation templates',
         meetingId: 'meeting-2',
         userId: 'mock-user',
+        teamId: null,
         description: 'Create documentation templates for the team',
-        
-        
         deadline: new Date('2024-12-09'),
         status: 'in_progress',
         priority: 'medium',
@@ -384,9 +387,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Set up automated code review checks',
         meetingId: 'meeting-2',
         userId: 'mock-user',
+        teamId: null,
         description: 'Set up automated code review checks',
-        
-        
         deadline: new Date('2024-12-11'),
         status: 'pending',
         priority: 'medium',
@@ -403,9 +405,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Analyze sprint velocity metrics',
         meetingId: 'meeting-2',
         userId: 'mock-user',
+        teamId: null,
         description: 'Analyze sprint velocity metrics and create report',
-        
-        
         deadline: new Date('2024-12-08'),
         status: 'completed',
         priority: 'low',
@@ -424,9 +425,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Create timeline estimates',
         meetingId: 'meeting-3',
         userId: 'mock-user',
+        teamId: null,
         description: 'Create timeline estimates for export functionality',
-        
-        
         deadline: new Date('2024-12-10'),
         status: 'in_progress',
         priority: 'high',
@@ -443,9 +443,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Design initial mockups for dark mode',
         meetingId: 'meeting-3',
         userId: 'mock-user',
+        teamId: null,
         description: 'Design initial mockups for dark mode theme',
-        
-        
         deadline: new Date('2024-12-13'),
         status: 'pending',
         priority: 'medium',
@@ -462,9 +461,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Evaluate mobile app feasibility',
         meetingId: 'meeting-3',
         userId: 'mock-user',
+        teamId: null,
         description: 'Evaluate mobile app feasibility and create proposal',
-        
-        
         deadline: new Date('2024-12-20'),
         status: 'pending',
         priority: 'low',
@@ -483,9 +481,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Create microservices architecture diagram',
         meetingId: 'meeting-4',
         userId: 'mock-user',
+        teamId: null,
         description: 'Create microservices architecture diagram',
-        
-        
         deadline: new Date('2024-12-11'),
         status: 'in_progress',
         priority: 'high',
@@ -503,9 +500,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'POC Kubernetes cluster setup',
         meetingId: 'meeting-4',
         userId: 'mock-user',
+        teamId: null,
         description: 'POC Kubernetes cluster setup for microservices',
-        
-        
         deadline: new Date('2024-12-18'),
         status: 'pending',
         priority: 'high',
@@ -523,9 +519,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Define testing strategy',
         meetingId: 'meeting-4',
         userId: 'mock-user',
+        teamId: null,
         description: 'Define testing strategy for microservices architecture',
-        
-        
         deadline: new Date('2024-12-16'),
         status: 'pending',
         priority: 'medium',
@@ -544,9 +539,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Provide engineering input',
         meetingId: 'meeting-5',
         userId: 'mock-user',
+        teamId: null,
         description: 'Provide engineering input for Q1 roadmap',
-        
-        
         deadline: new Date('2024-12-06'),
         status: 'pending',
         priority: 'urgent',
@@ -563,9 +557,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Complete API optimization work',
         meetingId: 'meeting-5',
         userId: 'mock-user',
+        teamId: null,
         description: 'Complete API optimization work',
-        
-        
         deadline: new Date('2024-12-08'),
         status: 'in_progress',
         priority: 'high',
@@ -582,6 +575,7 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Review database migration scripts',
         meetingId: 'meeting-5',
         userId: 'mock-user',
+        teamId: null,
         description: 'Review database migration scripts',
         deadline: new Date('2024-12-07'),
         status: 'pending',
@@ -599,9 +593,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Demo dashboard analytics',
         meetingId: 'meeting-5',
         userId: 'mock-user',
+        teamId: null,
         description: 'Demo dashboard analytics to stakeholders',
-        
-        
         deadline: new Date('2024-12-09'),
         status: 'pending',
         priority: 'medium',
@@ -618,9 +611,8 @@ export const mockTasks: (TaskWithRelations & { quarterlyObjectiveId?: string; ca
         title: 'Finalize design system updates',
         meetingId: 'meeting-5',
         userId: 'mock-user',
+        teamId: null,
         description: 'Finalize design system updates',
-        
-        
         deadline: new Date('2024-12-06'),
         status: 'in_progress',
         priority: 'medium',
