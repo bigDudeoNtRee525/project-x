@@ -1,62 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Check if Supabase environment variables are configured
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Use mock mode if env vars are missing or contain placeholder values
-const isMock = !supabaseUrl ||
-  !supabaseAnonKey ||
-  supabaseUrl.includes('your-project') ||
-  supabaseAnonKey.includes('your-anon-key');
-
-// Create Supabase client or mock client for development
-export const supabase = isMock ? createMockClient() : createClient(
-  supabaseUrl!,
-  supabaseAnonKey!,
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      storage: typeof window !== 'undefined' ? localStorage : undefined,
-    },
-  }
-);
-
-function createMockClient() {
-  return {
-    auth: {
-      getSession: async () => ({
-        data: {
-          session: {
-            access_token: 'dev_mock_user',
-            token_type: 'bearer',
-            user: {
-              id: 'dev-user-id',
-              email: 'dev@example.com',
-              user_metadata: {}
-            }
-          }
-        },
-        error: null
-      }),
-      getUser: async () => ({
-        data: {
-          user: {
-            id: 'dev-user-id',
-            email: 'dev@example.com',
-            user_metadata: {}
-          }
-        },
-        error: null
-      }),
-      signInWithPassword: async () => ({ data: null, error: null }),
-      signUp: async () => ({ data: null, error: null }),
-      signOut: async () => ({ error: null }),
-      resetPasswordForEmail: async () => ({ error: null }),
-    },
-  };
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
 }
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    storage: typeof window !== 'undefined' ? localStorage : undefined,
+  },
+});
 
 // Helper to get current session
 export async function getCurrentSession() {
