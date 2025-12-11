@@ -39,6 +39,7 @@ services:
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPSEEKAUTH=${DEEPSEEKAUTH}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required}
     depends_on:
       postgres:
