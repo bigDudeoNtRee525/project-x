@@ -1,97 +1,38 @@
 # Production Dockerfile for frontend
-# Multi-stage build optimized for Next.js standalone output
-
-# ============================================
-# Stage 1: Dependencies
-# ============================================
 FROM node:20-alpine AS deps
-
 WORKDIR /app
-
-# Install libc6-compat for Alpine compatibility
 RUN apk add --no-cache libc6-compat
-
-# Copy root package files
 COPY package*.json ./
 COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/shared/package.json ./packages/shared/
-
-# Install dependencies
 RUN npm ci
 
-# ============================================
-# Stage 2: Builder
-# ============================================
 FROM node:20-alpine AS builder
-
 WORKDIR /app
-
 RUN apk add --no-cache libc6-compat
-
-# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/frontend/node_modules ./apps/frontend/node_modules 2>/dev/null || true
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules 2>/dev/null || true
-
-# Copy source code
 COPY . .
-
-# Build shared package first
 WORKDIR /app/packages/shared
 RUN npm run build || true
-
-# Build frontend
 WORKDIR /app/apps/frontend
-
-# Set build-time environment variables (these will be baked into the build)
-# Runtime env vars should be passed via docker-compose or kubernetes
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-# Build Next.js application
 RUN npm run build
 
-# ============================================
-# Stage 3: Production Runner
-# ============================================
 FROM node:20-alpine AS runner
-
 WORKDIR /app
-
-# Install libc6-compat
 RUN apk add --no-cache libc6-compat
-
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
-# Copy public assets
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/apps/frontend/public ./public
-
-# Set up standalone output directory
-# Next.js standalone output includes only necessary files
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./apps/frontend/.next/static
-
-# Switch to non-root user
 USER nextjs
-
-# Expose port
 EXPOSE 3000
-
-# Set environment
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
-
-# Start Next.js server (standalone mode)
 CMD ["node", "apps/frontend/server.js"]
