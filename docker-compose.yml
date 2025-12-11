@@ -8,18 +8,12 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d meeting_tasks"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   backend:
     build:
       context: .
       dockerfile: ./apps/backend/Dockerfile
     network_mode: host
-    command: /bin/sh -c "npx prisma generate && npx prisma db push && npm run dev"
     environment:
       - DATABASE_URL=postgresql://admin:password@localhost:5432/meeting_tasks
       - NODE_ENV=development
@@ -29,24 +23,16 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - DEEPSEEKAUTH=${DEEPSEEKAUTH}
-    volumes:
-      - ./apps/backend:/app/apps/backend
-      - /app/apps/backend/node_modules
 
   frontend:
     build:
       context: .
       dockerfile: ./apps/frontend/Dockerfile
     network_mode: host
-    working_dir: /app/apps/frontend
-    command: npm run dev
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    volumes:
-      - ./apps/frontend:/app/apps/frontend
-      - /app/apps/frontend/node_modules
 
 volumes:
   postgres_data:

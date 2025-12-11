@@ -25,5 +25,5 @@ RUN npx prisma generate
 # Expose port
 EXPOSE 3001
 
-# Start application
-CMD ["npm", "run", "dev"]
+# Start application (push schema to DB and run dev server)
+CMD ["sh", "-c", "npx prisma db push && npm run dev"]
