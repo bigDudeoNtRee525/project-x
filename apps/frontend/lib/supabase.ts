@@ -1,19 +1,18 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let supabaseInstance: SupabaseClient | null = null;
 
-// Create supabase client lazily to avoid build-time errors
-let _supabase: SupabaseClient | null = null;
+export function getSupabaseClient(): SupabaseClient {
+  if (supabaseInstance) return supabaseInstance;
 
-function getSupabase(): SupabaseClient {
-  if (_supabase) return _supabase;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set');
+    throw new Error('Missing Supabase environment variables');
   }
 
-  _supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
@@ -21,33 +20,36 @@ function getSupabase(): SupabaseClient {
     },
   });
 
-  return _supabase;
+  return supabaseInstance;
 }
 
-// Export as getter to ensure lazy initialization
-export const supabase = new Proxy({} as SupabaseClient, {
-  get(_, prop) {
-    return (getSupabase() as any)[prop];
+// For backwards compatibility - but prefer using getSupabaseClient()
+export const supabase = {
+  get auth() {
+    return getSupabaseClient().auth;
   },
-});
+};
 
 // Helper to get current session
 export async function getCurrentSession() {
-  const { data: { session }, error } = await supabase.auth.getSession();
+  const client = getSupabaseClient();
+  const { data: { session }, error } = await client.auth.getSession();
   if (error) throw error;
   return session;
 }
 
 // Helper to get current user
 export async function getCurrentUser() {
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const client = getSupabaseClient();
+  const { data: { user }, error } = await client.auth.getUser();
   if (error) throw error;
   return user;
 }
 
 // Sign in with email/password
 export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const client = getSupabaseClient();
+  const { data, error } = await client.auth.signInWithPassword({
     email,
     password,
   });
@@ -57,7 +59,8 @@ export async function signIn(email: string, password: string) {
 
 // Sign up with email/password
 export async function signUp(email: string, password: string, name?: string) {
-  const { data, error } = await supabase.auth.signUp({
+  const client = getSupabaseClient();
+  const { data, error } = await client.auth.signUp({
     email,
     password,
     options: {
@@ -72,13 +75,15 @@ export async function signUp(email: string, password: string, name?: string) {
 
 // Sign out
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
+  const client = getSupabaseClient();
+  const { error } = await client.auth.signOut();
   if (error) throw error;
 }
 
 // Reset password
 export async function resetPassword(email: string) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  const client = getSupabaseClient();
+  const { error } = await client.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/auth/reset-password`,
   });
   if (error) throw error;
