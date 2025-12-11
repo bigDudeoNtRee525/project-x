@@ -13,13 +13,11 @@ export default function HomePage() {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
 
   useEffect(() => {
-    console.log('HomePage auth state:', { isAuthenticated, isLoading, user });
-    // Always redirect to dashboard so you can see it
-    if (!isLoading) {
-      console.log('Redirecting to dashboard');
+    // Redirect to dashboard only if authenticated
+    if (!isLoading && isAuthenticated) {
       router.push('/dashboard');
     }
-  }, [isLoading, router, user]);
+  }, [isLoading, isAuthenticated, router]);
 
   useEffect(() => {
     checkAuth();
@@ -38,21 +36,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Debug info */}
-      <div className="bg-yellow-50 p-4 border-b border-yellow-200">
-        <div className="max-w-7xl mx-auto">
-          <p className="text-sm text-yellow-800">
-            Auth debug: {isAuthenticated ? 'Authenticated' : 'Not authenticated'} |
-            User: {user?.email || 'None'} |
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="ml-2 underline"
-            >
-              Go to dashboard manually
-            </button>
-          </p>
-        </div>
-      </div>
       {/* Hero Section */}
       <div className="px-4 py-16 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center">
