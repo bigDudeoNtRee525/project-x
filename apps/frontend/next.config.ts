@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   // This creates a minimal production build with only necessary files
   output: "standalone",
 
+  // Transpile these packages for proper resolution in monorepo
+  transpilePackages: ["shared"],
+
   // Disable x-powered-by header for security
   poweredByHeader: false,
 
@@ -31,6 +34,12 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "2mb",
     },
+  },
+
+  // Turbopack configuration for monorepo
+  // Use process.cwd() parent for Docker compatibility
+  turbopack: {
+    root: process.env.TURBOPACK_ROOT || "..",
   },
 
   // Environment variables that should be available at build time

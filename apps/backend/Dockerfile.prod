@@ -2,16 +2,16 @@
 # Multi-stage build for minimal image size
 
 # ============================================
-# Stage 1: Install dependencies
+# Stage 1: Build the application
 # ============================================
-FROM node:20-slim AS deps
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
 # Install OpenSSL and CA certificates (required for Prisma)
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Copy package files for all workspaces (all workspace package.json files required)
+# Copy package files for all workspaces
 COPY package.json package-lock.json ./
 COPY apps/backend/package.json ./apps/backend/
 COPY apps/frontend/package.json ./apps/frontend/
@@ -20,21 +20,7 @@ COPY packages/shared/package.json ./packages/shared/
 # Install all dependencies (including devDependencies for build)
 RUN npm ci
 
-# ============================================
-# Stage 2: Build the application
-# ============================================
-FROM node:20-slim AS builder
-
-WORKDIR /app
-
-# Install OpenSSL (required for Prisma)
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-
-# Copy dependencies from deps stage (npm workspaces hoists to root node_modules)
-COPY --from=deps /app/node_modules ./node_modules
-
 # Copy source files
-COPY package.json package-lock.json ./
 COPY apps/backend ./apps/backend
 COPY packages/shared ./packages/shared
 
@@ -48,7 +34,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # ============================================
-# Stage 3: Production runner
+# Stage 2: Production runner
 # ============================================
 FROM node:20-slim AS runner
 
@@ -64,6 +50,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copy package files (needed for workspace resolution)
 COPY package.json package-lock.json ./
 COPY apps/backend/package.json ./apps/backend/
+COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/shared/package.json ./packages/shared/
 
 # Copy built shared package

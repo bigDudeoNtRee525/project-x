@@ -2,16 +2,16 @@
 # Multi-stage build for minimal image size
 
 # ============================================
-# Stage 1: Install dependencies
+# Stage 1: Build the application
 # ============================================
-FROM node:20-alpine AS deps
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Install libc6-compat for Alpine compatibility
 RUN apk add --no-cache libc6-compat
 
-# Copy package files for all workspaces (all workspace package.json files required)
+# Copy package files for all workspaces
 COPY package.json package-lock.json ./
 COPY apps/frontend/package.json ./apps/frontend/
 COPY apps/backend/package.json ./apps/backend/
@@ -20,21 +20,7 @@ COPY packages/shared/package.json ./packages/shared/
 # Install all dependencies
 RUN npm ci
 
-# ============================================
-# Stage 2: Build the application
-# ============================================
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# Install libc6-compat
-RUN apk add --no-cache libc6-compat
-
-# Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
-
 # Copy source files
-COPY package.json package-lock.json ./
 COPY apps/frontend ./apps/frontend
 COPY packages/shared ./packages/shared
 
@@ -42,8 +28,8 @@ COPY packages/shared ./packages/shared
 WORKDIR /app/packages/shared
 RUN npm run build
 
-# Build Next.js app
-WORKDIR /app/apps/frontend
+# Build Next.js app from monorepo root (ensures proper module resolution)
+WORKDIR /app
 
 # Build-time environment variables (NEXT_PUBLIC_* vars must be set at build time)
 ARG NEXT_PUBLIC_API_URL
@@ -56,11 +42,13 @@ ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 # Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
+# Set turbopack root for monorepo resolution
+ENV TURBOPACK_ROOT=/app
 
-RUN npm run build
+RUN npm run build --workspace=frontend
 
 # ============================================
-# Stage 3: Production runner
+# Stage 2: Production runner
 # ============================================
 FROM node:20-alpine AS runner
 
