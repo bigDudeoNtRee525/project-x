@@ -54,10 +54,9 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 JWT_SECRET=your-supabase-jwt-secret
 
 # ============================================
-# AI Services
+# AI Services (DeepSeek)
 # ============================================
-OPENAI_API_KEY=sk-your-openai-key
-DEEPSEEKAUTH=your-deepseek-key  # Optional
+DEEPSEEKAUTH=your-deepseek-api-key
 
 # ============================================
 # CORS - Frontend URLs allowed to access API

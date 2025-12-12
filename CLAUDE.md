@@ -109,8 +109,7 @@ SUPABASE_URL="https://your-project.supabase.co"
 SUPABASE_ANON_KEY="your-anon-key"
 SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 JWT_SECRET="your-jwt-secret"  # Supabase JWT secret
-OPENAI_API_KEY="sk-..."       # For AI task extraction
-N8N_WEBHOOK_URL="http://localhost:5678/webhook/process-meeting"
+DEEPSEEKAUTH="your-deepseek-api-key"  # For AI task extraction
 PORT=3001
 NODE_ENV="development"
 ```
