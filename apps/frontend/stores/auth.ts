@@ -86,7 +86,14 @@ export const useAuthStore = create<AuthState>()(
         const { setLoading } = get();
         setLoading(true);
         try {
-          await supabase.auth.signInWithPassword({ email, password });
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) {
+            throw new Error(error.message);
+          }
+          // Supabase returns null session (no error) when email is not confirmed
+          if (!data.session) {
+            throw new Error('Please confirm your email address before signing in. Check your inbox for the confirmation link.');
+          }
           await get().checkAuth();
         } finally {
           setLoading(false);
@@ -97,7 +104,7 @@ export const useAuthStore = create<AuthState>()(
         const { setLoading } = get();
         setLoading(true);
         try {
-          await supabase.auth.signUp({
+          const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
@@ -106,6 +113,9 @@ export const useAuthStore = create<AuthState>()(
               },
             },
           });
+          if (error) {
+            throw new Error(error.message);
+          }
           // User needs to confirm email before being authenticated
           set({ user: null, isAuthenticated: false, isLoading: false });
         } finally {
@@ -117,7 +127,11 @@ export const useAuthStore = create<AuthState>()(
         const { setLoading } = get();
         setLoading(true);
         try {
-          await supabase.auth.signOut();
+          const { error } = await supabase.auth.signOut();
+          if (error) {
+            console.error('Sign out error:', error.message);
+          }
+          // Always clear local auth state even if API call fails
           get().clearAuth();
         } finally {
           setLoading(false);
