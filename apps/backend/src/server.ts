@@ -19,6 +19,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for Railway/load balancers (required for rate limiting)
+app.set('trust proxy', 1);
+
 // Parse allowed origins from environment variable
 const getAllowedOrigins = (): string[] | boolean => {
   const allowedOrigins = process.env.ALLOWED_ORIGINS;
