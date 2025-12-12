@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployment
@@ -7,6 +8,11 @@ const nextConfig: NextConfig = {
 
   // Transpile these packages for proper resolution in monorepo
   transpilePackages: ["shared"],
+
+  // Turbopack root - absolute path to monorepo root
+  turbopack: {
+    root: path.resolve(__dirname, "../.."),
+  },
 
   // Disable x-powered-by header for security
   poweredByHeader: false,
@@ -34,12 +40,6 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "2mb",
     },
-  },
-
-  // Turbopack configuration for monorepo
-  // Use process.cwd() parent for Docker compatibility
-  turbopack: {
-    root: process.env.TURBOPACK_ROOT || "..",
   },
 
   // Environment variables that should be available at build time
