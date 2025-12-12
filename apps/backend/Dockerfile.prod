@@ -11,9 +11,10 @@ WORKDIR /app
 # Install OpenSSL and CA certificates (required for Prisma)
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Copy package files for all workspaces
+# Copy package files for all workspaces (all workspace package.json files required)
 COPY package.json package-lock.json ./
 COPY apps/backend/package.json ./apps/backend/
+COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/shared/package.json ./packages/shared/
 
 # Install all dependencies (including devDependencies for build)

@@ -11,9 +11,10 @@ WORKDIR /app
 # Install libc6-compat for Alpine compatibility
 RUN apk add --no-cache libc6-compat
 
-# Copy package files for all workspaces
+# Copy package files for all workspaces (all workspace package.json files required)
 COPY package.json package-lock.json ./
 COPY apps/frontend/package.json ./apps/frontend/
+COPY apps/backend/package.json ./apps/backend/
 COPY packages/shared/package.json ./packages/shared/
 
 # Install all dependencies
