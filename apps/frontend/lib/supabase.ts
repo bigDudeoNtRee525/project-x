@@ -1,48 +1,24 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
-let supabaseInstance: SupabaseClient | null = null;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export function getSupabaseClient(): SupabaseClient {
-  if (supabaseInstance) return supabaseInstance;
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      storage: typeof window !== 'undefined' ? localStorage : undefined,
-    },
-  });
-
-  return supabaseInstance;
+export function getSupabaseClient() {
+  return supabase;
 }
-
-// For backwards compatibility - but prefer using getSupabaseClient()
-export const supabase = {
-  get auth() {
-    return getSupabaseClient().auth;
-  },
-};
 
 // Helper to get current session
 export async function getCurrentSession() {
-  const client = getSupabaseClient();
-  const { data: { session }, error } = await client.auth.getSession();
+  const { data: { session }, error } = await supabase.auth.getSession();
   if (error) throw error;
   return session;
 }
 
 // Helper to get current user
 export async function getCurrentUser() {
-  const client = getSupabaseClient();
-  const { data: { user }, error } = await client.auth.getUser();
-  // Don't throw on missing session - just return null
+  const { data: { user }, error } = await supabase.auth.getUser();
   if (error) {
     if (error.name === 'AuthSessionMissingError') {
       return null;
@@ -54,8 +30,7 @@ export async function getCurrentUser() {
 
 // Sign in with email/password
 export async function signIn(email: string, password: string) {
-  const client = getSupabaseClient();
-  const { data, error } = await client.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -65,8 +40,7 @@ export async function signIn(email: string, password: string) {
 
 // Sign up with email/password
 export async function signUp(email: string, password: string, name?: string) {
-  const client = getSupabaseClient();
-  const { data, error } = await client.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -81,16 +55,14 @@ export async function signUp(email: string, password: string, name?: string) {
 
 // Sign out
 export async function signOut() {
-  const client = getSupabaseClient();
-  const { error } = await client.auth.signOut();
+  const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
 
 // Reset password
 export async function resetPassword(email: string) {
-  const client = getSupabaseClient();
-  const { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/reset-password`,
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
   });
   if (error) throw error;
 }
