@@ -41,7 +41,7 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
-  skip: (req) => req.path === '/api/v1/health', // Skip health checks
+  skip: (req) => req.path === '/api/v1/health' || req.method === 'OPTIONS', // Skip health checks and CORS preflight
 });
 
 // Stricter rate limit for auth endpoints
@@ -51,15 +51,25 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts, please try again later.' },
+  skip: (req) => req.method === 'OPTIONS', // Skip CORS preflight
 });
 
-// Middleware
-app.use(helmet());
-app.use(compression()); // Compress all responses
-app.use(cors({
+// CORS configuration - must be before other middleware
+const corsOptions = {
   origin: getAllowedOrigins(),
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+};
+
+// Middleware - CORS must come first
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
+app.use(compression()); // Compress all responses
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' })); // Limit request body size
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
