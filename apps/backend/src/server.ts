@@ -21,17 +21,17 @@ const PORT = process.env.PORT || 3001;
 
 // Parse allowed origins from environment variable
 const getAllowedOrigins = (): string[] | boolean => {
-  if (process.env.NODE_ENV !== 'production') {
-    return true; // Allow all origins in dev mode
-  }
-
   const allowedOrigins = process.env.ALLOWED_ORIGINS;
+
+  // If no origins set, allow all (for easier debugging)
   if (!allowedOrigins) {
-    console.warn('WARNING: ALLOWED_ORIGINS not set in production. Defaulting to no origins allowed.');
-    return [];
+    console.warn('WARNING: ALLOWED_ORIGINS not set. Allowing all origins.');
+    return true;
   }
 
-  return allowedOrigins.split(',').map(origin => origin.trim());
+  const origins = allowedOrigins.split(',').map(origin => origin.trim());
+  console.log('CORS allowed origins:', origins);
+  return origins;
 };
 
 // Rate limiting configuration
