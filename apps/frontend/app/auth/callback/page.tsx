@@ -34,7 +34,7 @@ export default function AuthCallbackPage() {
         if (type === 'signup' || type === 'magiclink') {
           router.push('/dashboard');
         } else if (type === 'recovery') {
-          router.push('/auth/reset-password');
+          router.push('/reset-password');
         } else {
           router.push('/dashboard');
         }

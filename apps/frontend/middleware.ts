@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // Only these paths are accessible without authentication
-const publicPaths = ['/login', '/register', '/', '/auth/callback'];
+const publicPaths = ['/login', '/register', '/', '/auth/callback', '/forgot-password', '/reset-password', '/join'];
 
 // Paths that should redirect to dashboard if already authenticated
 const authPaths = ['/login', '/register'];

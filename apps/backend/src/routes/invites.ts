@@ -7,6 +7,18 @@ import { z } from 'zod';
 
 const router = Router();
 
+// Get frontend URL with production validation
+function getFrontendUrl(): string {
+  const url = process.env.FRONTEND_URL;
+  if (!url) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('CRITICAL: FRONTEND_URL not set in production! Invite links will be broken.');
+    }
+    return 'http://localhost:3000';
+  }
+  return url;
+}
+
 // Validation schemas
 const emailInviteSchema = z.object({
   email: z.string().email(),
@@ -81,7 +93,7 @@ router.post('/email', authenticate, loadTeamContext, requireTeamMember, async (r
       teamName: team?.name || 'Team',
       inviterName: inviter?.name || inviter?.email || 'A team member',
       inviteToken: invite.token,
-      baseUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+      baseUrl: getFrontendUrl(),
     });
 
     res.status(201).json({
@@ -123,7 +135,7 @@ router.post('/link', authenticate, loadTeamContext, requireTeamMember, async (re
       },
     });
 
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const baseUrl = getFrontendUrl();
     const inviteUrl = `${baseUrl}/join/${invite.token}`;
 
     res.status(201).json({

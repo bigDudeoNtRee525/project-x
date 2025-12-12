@@ -1,38 +1,92 @@
+version: '3.8'
+
 services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
   postgres:
     image: postgres:16-alpine
-    network_mode: host
+    restart: unless-stopped
     environment:
       POSTGRES_DB: meeting_tasks
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d meeting_tasks"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - dev-network
 
+  # ============================================
+  # Backend API Server (Development)
+  # ============================================
   backend:
     build:
       context: .
       dockerfile: ./apps/backend/Dockerfile
-    network_mode: host
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
     environment:
-      - DATABASE_URL=postgresql://admin:password@localhost:5432/meeting_tasks
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/meeting_tasks
       - NODE_ENV=development
       - PORT=3001
       - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - JWT_SECRET=${JWT_SECRET}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
       - DEEPSEEKAUTH=${DEEPSEEKAUTH}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Mount source code for hot reloading
+      - ./apps/backend/src:/app/apps/backend/src
+      - ./apps/backend/prisma:/app/apps/backend/prisma
+      - ./packages/shared/src:/app/packages/shared/src
+    networks:
+      - dev-network
 
+  # ============================================
+  # Frontend Next.js Application (Development)
+  # ============================================
   frontend:
     build:
       context: .
       dockerfile: ./apps/frontend/Dockerfile
-    network_mode: host
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001/api/v1}
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    depends_on:
+      - backend
+    volumes:
+      # Mount source code for hot reloading
+      - ./apps/frontend/app:/app/apps/frontend/app
+      - ./apps/frontend/components:/app/apps/frontend/components
+      - ./apps/frontend/lib:/app/apps/frontend/lib
+      - ./apps/frontend/stores:/app/apps/frontend/stores
+      - ./packages/shared/src:/app/packages/shared/src
+    networks:
+      - dev-network
 
 volumes:
   postgres_data:
+
+networks:
+  dev-network:
+    driver: bridge
+    name: meeting-task-dev-network

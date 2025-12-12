@@ -3,13 +3,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, Plus, RefreshCw, Edit2, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
+import { List, Plus, RefreshCw, Edit2, Trash2 } from 'lucide-react';
 import { tasksApi, contactsApi } from '@/lib/api';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { TaskFilters } from '@/components/TaskFilters';
 import { BulkActionBar } from '@/components/BulkActionBar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InlineTaskSelect } from '@/components/InlineTaskSelect';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { toast } from 'sonner';
 import type { TaskWithRelations, Contact } from '@meeting-task-tool/shared';
 
 // Status display mapping
@@ -39,6 +41,10 @@ export default function TasksPage() {
 
     // Bulk selection state
     const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+
+    // Delete state
+    const [deletingTask, setDeletingTask] = useState<TaskWithRelations | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Filter state
     const [filters, setFilters] = useState({
@@ -148,29 +154,65 @@ export default function TasksPage() {
 
     // Bulk update handlers
     const handleBulkStatusUpdate = async (status: string) => {
+        const taskIds = Array.from(selectedTaskIds);
+        const previousTasks = [...tasks];
+
+        // Optimistic update
         setTasks((prev) =>
             prev.map((task) =>
                 selectedTaskIds.has(task.id) ? { ...task, status: status as any } : task
             )
         );
         clearSelection();
+
+        // Actually call the API for each task
+        try {
+            await Promise.all(
+                taskIds.map((taskId) => tasksApi.update(taskId, { status }))
+            );
+        } catch (error) {
+            // Rollback on error
+            console.error('Failed to update tasks:', error);
+            setTasks(previousTasks);
+            throw error;
+        }
     };
 
     const handleBulkPriorityUpdate = async (priority: string) => {
+        const taskIds = Array.from(selectedTaskIds);
+        const previousTasks = [...tasks];
+
+        // Optimistic update
         setTasks((prev) =>
             prev.map((task) =>
                 selectedTaskIds.has(task.id) ? { ...task, priority: priority as any } : task
             )
         );
         clearSelection();
+
+        // Actually call the API for each task
+        try {
+            await Promise.all(
+                taskIds.map((taskId) => tasksApi.update(taskId, { priority }))
+            );
+        } catch (error) {
+            // Rollback on error
+            console.error('Failed to update tasks:', error);
+            setTasks(previousTasks);
+            throw error;
+        }
     };
 
     const handleBulkAssigneesUpdate = async (assigneeIds: string[]) => {
+        const taskIds = Array.from(selectedTaskIds);
+        const previousTasks = [...tasks];
+
         const assignees = assigneeIds.map((id) => {
             const contact = contacts.find((c) => c.id === id);
             return contact ? { id: contact.id, name: contact.name, email: contact.email } : null;
         }).filter(Boolean) as { id: string; name: string; email: string | null }[];
 
+        // Optimistic update
         setTasks((prev) =>
             prev.map((task) =>
                 selectedTaskIds.has(task.id)
@@ -179,10 +221,23 @@ export default function TasksPage() {
             )
         );
         clearSelection();
+
+        // Actually call the API for each task
+        try {
+            await Promise.all(
+                taskIds.map((taskId) => tasksApi.update(taskId, { assigneeIds }))
+            );
+        } catch (error) {
+            // Rollback on error
+            console.error('Failed to update tasks:', error);
+            setTasks(previousTasks);
+            throw error;
+        }
     };
 
     // Inline field update handler
     const handleInlineUpdate = async (taskId: string, field: string, value: string) => {
+        const previousTasks = [...tasks];
         // Optimistic update
         setTasks((prev) =>
             prev.map((task) =>
@@ -192,11 +247,42 @@ export default function TasksPage() {
 
         try {
             await tasksApi.update(taskId, { [field]: value });
+            toast.success('Task updated');
         } catch (error) {
-            // Rollback on error - reload tasks
+            // Rollback on error
             console.error('Failed to update task:', error);
-            loadTasks();
+            setTasks(previousTasks);
+            toast.error('Failed to update task');
             throw error;
+        }
+    };
+
+    // Delete handler
+    const handleDeleteConfirm = async () => {
+        if (!deletingTask) return;
+
+        const taskToDelete = deletingTask;
+        const previousTasks = [...tasks];
+
+        setIsDeleting(true);
+        // Optimistic update
+        setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
+        setSelectedTaskIds((prev) => {
+            const next = new Set(prev);
+            next.delete(taskToDelete.id);
+            return next;
+        });
+        setDeletingTask(null);
+
+        try {
+            await tasksApi.delete(taskToDelete.id);
+            toast.success('Task deleted successfully');
+        } catch (error) {
+            console.error('Failed to delete task:', error);
+            setTasks(previousTasks);
+            toast.error('Failed to delete task');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -346,17 +432,30 @@ export default function TasksPage() {
                                                     />
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleTaskClick(task);
-                                                        }}
-                                                        className="text-muted-foreground hover:text-foreground"
-                                                    >
-                                                        <Edit2 className="h-4 w-4" />
-                                                    </Button>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleTaskClick(task);
+                                                            }}
+                                                            className="text-muted-foreground hover:text-foreground"
+                                                        >
+                                                            <Edit2 className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setDeletingTask(task);
+                                                            }}
+                                                            className="text-muted-foreground hover:text-red-500"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -382,6 +481,15 @@ export default function TasksPage() {
                 open={editModalOpen}
                 onOpenChange={setEditModalOpen}
                 onSuccess={loadTasks}
+            />
+
+            <DeleteConfirmDialog
+                open={!!deletingTask}
+                onOpenChange={(open) => !open && setDeletingTask(null)}
+                onConfirm={handleDeleteConfirm}
+                title="Delete Task"
+                description={`Are you sure you want to delete "${deletingTask?.description?.slice(0, 50)}${(deletingTask?.description?.length || 0) > 50 ? '...' : ''}"? This action cannot be undone.`}
+                isLoading={isDeleting}
             />
         </div>
     );

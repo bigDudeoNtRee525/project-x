@@ -83,13 +83,14 @@ const buildGraphData = (goals: Goal[], onEdit?: (goal: Goal) => void, onDelete?:
         // Tasks for Yearly Goal
         if (yearly.tasks) {
             yearly.tasks.forEach((task: any) => {
+                const assigneeNames = task.assignees?.map((a: any) => a.name).join(', ') || null;
                 nodes.push({
                     id: task.id,
                     type: 'task',
                     data: {
-                        title: task.description,
+                        title: task.title || task.description,
                         status: task.status,
-                        assignee: task.assigneeName
+                        assignee: assigneeNames
                     },
                     position: { x: 0, y: 0 },
                 });
@@ -133,13 +134,14 @@ const buildGraphData = (goals: Goal[], onEdit?: (goal: Goal) => void, onDelete?:
                 // Tasks for Quarterly Goal
                 if (quarterly.tasks) {
                     quarterly.tasks.forEach((task: any) => {
+                        const assigneeNames = task.assignees?.map((a: any) => a.name).join(', ') || null;
                         nodes.push({
                             id: task.id,
                             type: 'task',
                             data: {
-                                title: task.description,
+                                title: task.title || task.description,
                                 status: task.status,
-                                assignee: task.assigneeName
+                                assignee: assigneeNames
                             },
                             position: { x: 0, y: 0 },
                         });
@@ -176,13 +178,14 @@ const buildGraphData = (goals: Goal[], onEdit?: (goal: Goal) => void, onDelete?:
                         // Tasks
                         if (cat.tasks) {
                             cat.tasks.forEach((task: any) => {
+                                const assigneeNames = task.assignees?.map((a: any) => a.name).join(', ') || null;
                                 nodes.push({
                                     id: task.id,
                                     type: 'task',
                                     data: {
-                                        title: task.description,
+                                        title: task.title || task.description,
                                         status: task.status,
-                                        assignee: task.assigneeName
+                                        assignee: assigneeNames
                                     },
                                     position: { x: 0, y: 0 },
                                 });

@@ -10,15 +10,16 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { X, CheckCircle, AlertCircle, Users } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Users, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Contact } from '@meeting-task-tool/shared';
 
 interface BulkActionBarProps {
     selectedCount: number;
     contacts: Contact[];
-    onUpdateStatus: (status: string) => void;
-    onUpdatePriority: (priority: string) => void;
-    onUpdateAssignees: (assigneeIds: string[]) => void;
+    onUpdateStatus: (status: string) => Promise<void> | void;
+    onUpdatePriority: (priority: string) => Promise<void> | void;
+    onUpdateAssignees: (assigneeIds: string[]) => Promise<void> | void;
     onClearSelection: () => void;
 }
 
@@ -31,14 +32,47 @@ export function BulkActionBar({
     onClearSelection,
 }: BulkActionBarProps) {
     const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const handleAssigneesChange = (ids: string[]) => {
         setSelectedAssignees(ids);
     };
 
-    const handleApplyAssignees = () => {
-        onUpdateAssignees(selectedAssignees);
-        setSelectedAssignees([]);
+    const handleStatusChange = async (status: string) => {
+        setIsUpdating(true);
+        try {
+            await onUpdateStatus(status);
+            toast.success(`Updated ${selectedCount} task(s) to ${status.replace('_', ' ')}`);
+        } catch (error) {
+            toast.error('Failed to update tasks');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handlePriorityChange = async (priority: string) => {
+        setIsUpdating(true);
+        try {
+            await onUpdatePriority(priority);
+            toast.success(`Updated ${selectedCount} task(s) to ${priority} priority`);
+        } catch (error) {
+            toast.error('Failed to update tasks');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleApplyAssignees = async () => {
+        setIsUpdating(true);
+        try {
+            await onUpdateAssignees(selectedAssignees);
+            toast.success(`Updated assignees for ${selectedCount} task(s)`);
+            setSelectedAssignees([]);
+        } catch (error) {
+            toast.error('Failed to update assignees');
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     if (selectedCount === 0) return null;
@@ -56,8 +90,12 @@ export function BulkActionBar({
 
                 {/* Status dropdown */}
                 <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                    <Select onValueChange={onUpdateStatus}>
+                    {isUpdating ? (
+                        <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+                    ) : (
+                        <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <Select onValueChange={handleStatusChange} disabled={isUpdating}>
                         <SelectTrigger className="w-[130px] bg-muted border-input text-foreground text-sm h-9">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
@@ -73,7 +111,7 @@ export function BulkActionBar({
                 {/* Priority dropdown */}
                 <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    <Select onValueChange={onUpdatePriority}>
+                    <Select onValueChange={handlePriorityChange} disabled={isUpdating}>
                         <SelectTrigger className="w-[120px] bg-muted border-input text-foreground text-sm h-9">
                             <SelectValue placeholder="Priority" />
                         </SelectTrigger>
@@ -103,9 +141,10 @@ export function BulkActionBar({
                             size="sm"
                             variant="secondary"
                             onClick={handleApplyAssignees}
+                            disabled={isUpdating}
                             className="h-9"
                         >
-                            Apply
+                            {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
                         </Button>
                     )}
                 </div>

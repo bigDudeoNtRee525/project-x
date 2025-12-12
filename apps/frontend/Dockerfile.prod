@@ -1,48 +1,97 @@
-# Production Dockerfile for frontend
-FROM node:20-alpine AS builder
+# Production Dockerfile for frontend (Next.js)
+# Multi-stage build for minimal image size
+
+# ============================================
+# Stage 1: Install dependencies
+# ============================================
+FROM node:20-alpine AS deps
+
 WORKDIR /app
+
+# Install libc6-compat for Alpine compatibility
 RUN apk add --no-cache libc6-compat
 
-# Copy everything and install
-COPY package*.json ./
+# Copy package files for all workspaces
+COPY package.json package-lock.json ./
 COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install ALL dependencies
-RUN npm install
+# Install all dependencies
+RUN npm ci
 
-# Copy source
-COPY . .
+# ============================================
+# Stage 2: Build the application
+# ============================================
+FROM node:20-alpine AS builder
 
-# Build shared package
+WORKDIR /app
+
+# Install libc6-compat
+RUN apk add --no-cache libc6-compat
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source files
+COPY package.json package-lock.json ./
+COPY apps/frontend ./apps/frontend
+COPY packages/shared ./packages/shared
+
+# Build shared package first
 WORKDIR /app/packages/shared
-RUN npm run build || true
+RUN npm run build
 
-# Build frontend
+# Build Next.js app
 WORKDIR /app/apps/frontend
+
+# Build-time environment variables (NEXT_PUBLIC_* vars must be set at build time)
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+# Disable telemetry during build
+ENV NEXT_TELEMETRY_DISABLED=1
+
 RUN npm run build
 
+# ============================================
+# Stage 3: Production runner
+# ============================================
 FROM node:20-alpine AS runner
+
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
-# Copy public folder if it exists (use wildcard to avoid failure)
-COPY --from=builder /app/apps/frontend/public* ./public/
+# Install libc6-compat and curl for health checks
+RUN apk add --no-cache libc6-compat curl
 
-# Copy standalone build
-COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./apps/frontend/.next/static
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-USER nextjs
-EXPOSE 3000
+# Set environment
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Copy public folder (if it exists)
+COPY --from=builder /app/apps/frontend/public ./apps/frontend/public
+
+# Copy standalone output
+# The standalone output includes server.js and necessary node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/standalone ./
+
+# Copy static assets
+COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./apps/frontend/.next/static
+
+# Switch to non-root user
+USER nextjs
+
+EXPOSE 3000
+
+# The standalone server.js is at the workspace root in standalone output
 CMD ["node", "apps/frontend/server.js"]

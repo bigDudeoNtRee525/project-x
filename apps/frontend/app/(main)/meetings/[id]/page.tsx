@@ -8,6 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { meetingsApi, tasksApi } from '@/lib/api';
 import { ArrowLeft, Calendar, CheckCircle, Clock, Edit2, FileText, RefreshCw, XCircle, Trash2 } from 'lucide-react';
 import { TaskEditModal } from '@/components/TaskEditModal';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { toast } from 'sonner';
 import type { TaskWithRelations } from '@meeting-task-tool/shared';
 
 // Status display mapping
@@ -48,6 +51,9 @@ export default function MeetingDetailPage() {
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<TaskWithRelations | null>(null);
     const [isReprocessing, setIsReprocessing] = useState(false);
+    const [deletingTask, setDeletingTask] = useState<TaskWithRelations | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isConfirming, setIsConfirming] = useState(false);
 
     const loadMeeting = useCallback(async () => {
         setIsLoading(true);
@@ -97,6 +103,7 @@ export default function MeetingDetailPage() {
         setIsReprocessing(true);
         try {
             await meetingsApi.reprocess(meetingId);
+            toast.success('Reprocessing started...');
             // Poll for completion - the backend processes in background
             // Wait a bit then start checking
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -109,6 +116,7 @@ export default function MeetingDetailPage() {
                 const updatedMeeting = (response as any).meeting;
                 if (updatedMeeting.processed && updatedMeeting.tasks.length > 0) {
                     setMeeting(updatedMeeting);
+                    toast.success('Meeting reprocessed successfully');
                     break;
                 }
                 await new Promise(resolve => setTimeout(resolve, 2000));
@@ -116,10 +124,40 @@ export default function MeetingDetailPage() {
             }
         } catch (err) {
             console.error('Failed to reprocess meeting:', err);
-            alert('Failed to reprocess meeting');
+            toast.error('Failed to reprocess meeting');
         } finally {
             setIsReprocessing(false);
             loadMeeting();
+        }
+    };
+
+    const handleDeleteTask = async () => {
+        if (!deletingTask) return;
+        setIsDeleting(true);
+        try {
+            await tasksApi.delete(deletingTask.id);
+            toast.success('Task deleted');
+            loadMeeting();
+        } catch (err) {
+            console.error('Failed to delete task:', err);
+            toast.error('Failed to delete task');
+        } finally {
+            setIsDeleting(false);
+            setDeletingTask(null);
+        }
+    };
+
+    const handleConfirmTasks = async () => {
+        setIsConfirming(true);
+        try {
+            await meetingsApi.confirmTasks(meetingId);
+            toast.success('All tasks confirmed');
+            loadMeeting();
+        } catch (err) {
+            console.error('Failed to confirm tasks:', err);
+            toast.error('Failed to confirm tasks');
+        } finally {
+            setIsConfirming(false);
         }
     };
 
@@ -159,6 +197,14 @@ export default function MeetingDetailPage() {
 
     return (
         <div className="space-y-6">
+            {/* Breadcrumbs */}
+            <Breadcrumbs
+                items={[
+                    { label: 'Meetings', href: '/meetings' },
+                    { label: meeting.title },
+                ]}
+            />
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -195,18 +241,13 @@ export default function MeetingDetailPage() {
                         Refresh
                     </Button>
                     {meeting.tasks.some(t => !t.reviewed) && (
-                        <Button onClick={async () => {
-                            if (!confirm('Are you sure you want to confirm all tasks? They will appear in your main task list.')) return;
-                            try {
-                                await meetingsApi.confirmTasks(meetingId);
-                                loadMeeting();
-                            } catch (err) {
-                                console.error('Failed to confirm tasks:', err);
-                                alert('Failed to confirm tasks');
-                            }
-                        }} className="bg-green-600 hover:bg-green-700 text-white">
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Confirm Tasks
+                        <Button
+                            onClick={handleConfirmTasks}
+                            disabled={isConfirming}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            <CheckCircle className={`h-4 w-4 mr-1 ${isConfirming ? 'animate-spin' : ''}`} />
+                            {isConfirming ? 'Confirming...' : 'Confirm Tasks'}
                         </Button>
                     )}
                     <Button onClick={handleReprocess} disabled={isReprocessing}>
@@ -312,16 +353,9 @@ export default function MeetingDetailPage() {
                                                 }}>
                                                     <Edit2 className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="sm" onClick={async (e) => {
+                                                <Button variant="ghost" size="sm" onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (!confirm('Are you sure you want to delete this task?')) return;
-                                                    try {
-                                                        await tasksApi.delete(task.id);
-                                                        loadMeeting();
-                                                    } catch (err) {
-                                                        console.error('Failed to delete task:', err);
-                                                        alert('Failed to delete task');
-                                                    }
+                                                    setDeletingTask(task);
                                                 }} className="text-red-500 hover:text-red-700 hover:bg-red-50">
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -341,6 +375,16 @@ export default function MeetingDetailPage() {
                 open={editModalOpen}
                 onOpenChange={setEditModalOpen}
                 onSuccess={loadMeeting}
+            />
+
+            {/* Delete Task Confirmation */}
+            <DeleteConfirmDialog
+                open={!!deletingTask}
+                onOpenChange={(open) => !open && setDeletingTask(null)}
+                onConfirm={handleDeleteTask}
+                title="Delete Task"
+                description={`Are you sure you want to delete this task? This action cannot be undone.`}
+                isLoading={isDeleting}
             />
         </div>
     );

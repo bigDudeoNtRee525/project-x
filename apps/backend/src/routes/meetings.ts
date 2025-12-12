@@ -37,6 +37,24 @@ router.post('/', authenticate, loadTeamContext, async (req, res) => {
     // Start AI Processing in the background (Fire-and-forget to avoid timeout)
     // In a production app, use a proper queue (BullMQ, etc.)
     (async () => {
+      // Check if AI is configured
+      if (!deepSeekService.isConfigured()) {
+        console.warn(`AI not configured (DEEPSEEKAUTH not set). Skipping processing for meeting ${meeting.id}`);
+        await prisma.meeting.update({
+          where: { id: meeting.id },
+          data: {
+            processed: true,
+            processedAt: new Date(),
+            metadata: {
+              ...(meeting.metadata as object || {}),
+              processingStatus: 'skipped',
+              processingError: 'AI service not configured (DEEPSEEKAUTH not set)',
+            },
+          },
+        });
+        return;
+      }
+
       try {
         console.log(`Starting AI processing for meeting ${meeting.id}...`);
 
@@ -60,7 +78,6 @@ router.post('/', authenticate, loadTeamContext, async (req, res) => {
           const g = goals.find(g => g.id === contextResult.goalId);
           if (g) contextName = g.title;
         } else if (contextResult?.categoryId) {
-          // Find category name
           for (const g of goals) {
             const c = g.categories.find(cat => cat.id === contextResult.categoryId);
             if (c) {
@@ -77,13 +94,12 @@ router.post('/', authenticate, loadTeamContext, async (req, res) => {
         // 4. Save Tasks & Update Meeting
         console.log(`Saving ${extractedTasks.length} tasks...`);
         await prisma.$transaction(async (tx) => {
-          // Create tasks with assignees (can't use createMany with nested relations)
           for (const t of extractedTasks) {
             await tx.task.create({
               data: {
                 meetingId: meeting.id,
                 userId,
-                teamId, // Tasks inherit teamId from meeting
+                teamId,
                 title: t.title,
                 description: t.description || '',
                 priority: t.priority,
@@ -92,7 +108,6 @@ router.post('/', authenticate, loadTeamContext, async (req, res) => {
                 categoryId: contextResult?.categoryId,
                 aiExtracted: true,
                 status: 'pending',
-                // Create assignee relationship if AI extracted an assignee
                 ...(t.assigneeId && {
                   assignees: {
                     create: { contactId: t.assigneeId },
@@ -102,19 +117,40 @@ router.post('/', authenticate, loadTeamContext, async (req, res) => {
             });
           }
 
-          // Update meeting status
           await tx.meeting.update({
             where: { id: meeting.id },
             data: {
               processed: true,
               processedAt: new Date(),
+              metadata: {
+                ...(meeting.metadata as object || {}),
+                processingStatus: 'success',
+                taskCount: extractedTasks.length,
+              },
             },
           });
         });
 
         console.log(`Meeting ${meeting.id} processed successfully.`);
-      } catch (err) {
+      } catch (err: any) {
         console.error(`Error processing meeting ${meeting.id}:`, err);
+        // Update meeting to indicate processing failed
+        try {
+          await prisma.meeting.update({
+            where: { id: meeting.id },
+            data: {
+              processed: true,
+              processedAt: new Date(),
+              metadata: {
+                ...(meeting.metadata as object || {}),
+                processingStatus: 'failed',
+                processingError: err?.message || 'Unknown error during AI processing',
+              },
+            },
+          });
+        } catch (updateErr) {
+          console.error(`Failed to update meeting ${meeting.id} with error status:`, updateErr);
+        }
       }
     })();
 
@@ -270,6 +306,24 @@ router.post('/:id/reprocess', authenticate, loadTeamContext, async (req, res) =>
 
     // Start AI Processing in the background
     (async () => {
+      // Check if AI is configured
+      if (!deepSeekService.isConfigured()) {
+        console.warn(`AI not configured (DEEPSEEKAUTH not set). Cannot reprocess meeting ${meetingId}`);
+        await prisma.meeting.update({
+          where: { id: meetingId },
+          data: {
+            processed: true,
+            processedAt: new Date(),
+            metadata: {
+              ...(meeting.metadata as object || {}),
+              processingStatus: 'skipped',
+              processingError: 'AI service not configured (DEEPSEEKAUTH not set)',
+            },
+          },
+        });
+        return;
+      }
+
       try {
         console.log(`Starting AI reprocessing for meeting ${meetingId}...`);
 
@@ -309,13 +363,12 @@ router.post('/:id/reprocess', authenticate, loadTeamContext, async (req, res) =>
         // 4. Save Tasks & Update Meeting
         console.log(`Saving ${extractedTasks.length} tasks...`);
         await prisma.$transaction(async (tx) => {
-          // Create tasks with assignees (can't use createMany with nested relations)
           for (const t of extractedTasks) {
             await tx.task.create({
               data: {
                 meetingId,
                 userId,
-                teamId: meeting.teamId, // Tasks inherit teamId from meeting
+                teamId: meeting.teamId,
                 title: t.title,
                 description: t.description || '',
                 priority: t.priority,
@@ -324,7 +377,6 @@ router.post('/:id/reprocess', authenticate, loadTeamContext, async (req, res) =>
                 categoryId: contextResult?.categoryId,
                 aiExtracted: true,
                 status: 'pending',
-                // Create assignee relationship if AI extracted an assignee
                 ...(t.assigneeId && {
                   assignees: {
                     create: { contactId: t.assigneeId },
@@ -339,13 +391,35 @@ router.post('/:id/reprocess', authenticate, loadTeamContext, async (req, res) =>
             data: {
               processed: true,
               processedAt: new Date(),
+              metadata: {
+                ...(meeting.metadata as object || {}),
+                processingStatus: 'success',
+                taskCount: extractedTasks.length,
+              },
             },
           });
         });
 
         console.log(`Meeting ${meetingId} reprocessed successfully.`);
-      } catch (err) {
+      } catch (err: any) {
         console.error(`Error reprocessing meeting ${meetingId}:`, err);
+        // Update meeting to indicate processing failed
+        try {
+          await prisma.meeting.update({
+            where: { id: meetingId },
+            data: {
+              processed: true,
+              processedAt: new Date(),
+              metadata: {
+                ...(meeting.metadata as object || {}),
+                processingStatus: 'failed',
+                processingError: err?.message || 'Unknown error during AI processing',
+              },
+            },
+          });
+        } catch (updateErr) {
+          console.error(`Failed to update meeting ${meetingId} with error status:`, updateErr);
+        }
       }
     })();
 

@@ -6,6 +6,8 @@ import { meetingsApi } from '@/lib/api';
 import { Plus, RefreshCw } from 'lucide-react';
 import { MeetingUploadModal } from '@/components/MeetingUploadModal';
 import { MeetingsCalendar } from '@/components/MeetingsCalendar';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { toast } from 'sonner';
 import type { MeetingWithCount } from '@meeting-task-tool/shared';
 
 export default function MeetingsPage() {
@@ -13,6 +15,8 @@ export default function MeetingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
+    const [deletingMeeting, setDeletingMeeting] = useState<MeetingWithCount | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const loadMeetings = useCallback(async () => {
         setIsLoading(true);
@@ -28,17 +32,32 @@ export default function MeetingsPage() {
         }
     }, []);
 
-    const handleDelete = async (e: React.MouseEvent, id: string) => {
-        e.preventDefault(); // Prevent navigation
-        if (!confirm('Are you sure you want to delete this meeting?')) return;
+    const handleDeleteClick = (e: React.MouseEvent, meeting: MeetingWithCount) => {
+        e.preventDefault();
+        setDeletingMeeting(meeting);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!deletingMeeting) return;
+
+        const meetingToDelete = deletingMeeting;
+        const previousMeetings = [...meetings];
+
+        setIsDeleting(true);
+        // Optimistic update
+        setMeetings(prev => prev.filter(m => m.id !== meetingToDelete.id));
+        setDeletingMeeting(null);
 
         try {
-            await meetingsApi.delete(id);
-            // Optimistic update
-            setMeetings(prev => prev.filter(m => m.id !== id));
+            await meetingsApi.delete(meetingToDelete.id);
+            toast.success('Meeting deleted successfully');
         } catch (err) {
             console.error('Failed to delete meeting:', err);
-            alert('Failed to delete meeting');
+            // Rollback on error
+            setMeetings(previousMeetings);
+            toast.error('Failed to delete meeting');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -77,8 +96,20 @@ export default function MeetingsPage() {
                     </Button>
                 </div>
             ) : (
-                <MeetingsCalendar meetings={meetings} onDelete={handleDelete} />
+                <MeetingsCalendar meetings={meetings} onDelete={(e, id) => {
+                    const meeting = meetings.find(m => m.id === id);
+                    if (meeting) handleDeleteClick(e, meeting);
+                }} />
             )}
+
+            <DeleteConfirmDialog
+                open={!!deletingMeeting}
+                onOpenChange={(open) => !open && setDeletingMeeting(null)}
+                onConfirm={handleDeleteConfirm}
+                title="Delete Meeting"
+                description={`Are you sure you want to delete "${deletingMeeting?.title}"? This will also delete all tasks extracted from this meeting.`}
+                isLoading={isDeleting}
+            />
 
             <MeetingUploadModal
                 open={uploadModalOpen}

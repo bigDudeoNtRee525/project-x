@@ -24,18 +24,24 @@ export interface ExtractedTask {
 }
 
 export class DeepSeekService {
-    private client: OpenAI;
+    private client: OpenAI | null = null;
 
-    constructor() {
-        const apiKey = process.env.DEEPSEEKAUTH;
-        if (!apiKey) {
-            throw new Error('DEEPSEEKAUTH environment variable is not set');
+    private getClient(): OpenAI {
+        if (!this.client) {
+            const apiKey = process.env.DEEPSEEKAUTH;
+            if (!apiKey) {
+                throw new Error('DEEPSEEKAUTH environment variable is not set. AI features are disabled.');
+            }
+            this.client = new OpenAI({
+                apiKey: apiKey,
+                baseURL: 'https://api.deepseek.com',
+            });
         }
+        return this.client;
+    }
 
-        this.client = new OpenAI({
-            apiKey: apiKey,
-            baseURL: 'https://api.deepseek.com', // Standard DeepSeek API endpoint
-        });
+    isConfigured(): boolean {
+        return !!process.env.DEEPSEEKAUTH;
     }
 
     /**
@@ -88,7 +94,7 @@ You will receive the meeting transcript from the user.
 Read it carefully, apply the reasoning above, then output ONLY the JSON object.
     `;
 
-            const response = await this.client.chat.completions.create({
+            const response = await this.getClient().chat.completions.create({
                 model: 'deepseek-chat',
                 messages: [
                     { role: 'system', content: systemPrompt },
@@ -283,7 +289,7 @@ ${transcript}
 *** FINAL_OUTPUT_JSON ***
 Return ONLY a valid JSON object matching the Output interface. No extra text, no explanations, no Markdown, no code fences.`;
 
-            const response = await this.client.chat.completions.create({
+            const response = await this.getClient().chat.completions.create({
                 model: 'deepseek-chat',
                 messages: [
                     { role: 'user', content: prompt }

@@ -8,17 +8,21 @@ const router = Router();
 
 // Validation schemas
 const updateTaskSchema = z.object({
-  description: z.string().min(1).optional(),
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().optional(),
   assigneeIds: z.array(z.string().uuid()).optional(),
   deadline: z.string().datetime().optional().nullable(),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   reviewed: z.boolean().optional(),
+  goalId: z.string().uuid().optional().nullable(),
+  categoryId: z.string().uuid().optional().nullable(),
 });
 
 // Validation schema for creating a task
 const createTaskSchema = z.object({
-  description: z.string().min(1, 'Description is required'),
+  title: z.string().min(1, 'Title is required').max(500),
+  description: z.string().default(''),
   assigneeIds: z.array(z.string().uuid()).optional().default([]),
   deadline: z.string().datetime().optional().nullable(),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).default('pending'),
@@ -53,6 +57,7 @@ router.post('/', authenticate, loadTeamContext, async (req, res) => {
 
     const newTask = await prisma.task.create({
       data: {
+        title: data.title,
         description: data.description,
         deadline: data.deadline ? new Date(data.deadline) : undefined,
         status: data.status,
@@ -62,8 +67,8 @@ router.post('/', authenticate, loadTeamContext, async (req, res) => {
         meetingId: data.meetingId ?? undefined,
         userId,
         teamId,
-        reviewed: true, // Manually created tasks are considered reviewed
-        aiExtracted: false, // Not AI-extracted
+        reviewed: true,
+        aiExtracted: false,
         assignees: {
           create: data.assigneeIds.map((contactId) => ({
             contactId,

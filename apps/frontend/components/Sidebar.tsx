@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Users, Users2, Briefcase, CheckSquare, BarChart2, Settings, LogOut, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,13 @@ const navigation = [
 
 export function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
     const { user, signOut } = useAuthStore();
+
+    const handleSignOut = async () => {
+        await signOut();
+        router.push('/login');
+    };
 
     return (
         <div className="flex h-full w-[280px] flex-col bg-sidebar border-r border-sidebar-border">
@@ -86,7 +92,7 @@ export function Sidebar() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => signOut()}
+                        onClick={handleSignOut}
                         className="h-8 w-8 text-sidebar-foreground hover:text-white"
                     >
                         <LogOut className="h-4 w-4" />

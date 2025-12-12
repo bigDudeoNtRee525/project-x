@@ -25,7 +25,7 @@ router.post('/', authenticate, async (req, res) => {
             },
         });
 
-        res.status(201).json(category);
+        res.status(201).json({ category });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ error: 'Validation error', details: error.errors });
@@ -67,7 +67,7 @@ router.patch('/:id', authenticate, async (req, res) => {
             },
         });
 
-        res.json(category);
+        res.json({ category });
     } catch (error) {
         console.error('Error updating category:', error);
         res.status(500).json({ error: 'Internal server error' });

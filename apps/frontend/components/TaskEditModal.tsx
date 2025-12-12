@@ -21,11 +21,18 @@ import {
     SelectLabel,
 } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { tasksApi, contactsApi, goalsApi } from '@/lib/api';
+import { tasksApi, contactsApi, goalsApi, categoriesApi, type Category } from '@/lib/api';
 import { Target, Folder, CalendarIcon, Check, Loader2, X } from 'lucide-react';
+import { toast } from 'sonner';
+import * as z from 'zod';
+
+const MAX_DESCRIPTION_LENGTH = 5000;
+
+const taskSchema = z.object({
+    description: z.string().min(1, 'Description is required').max(MAX_DESCRIPTION_LENGTH, `Description must be less than ${MAX_DESCRIPTION_LENGTH} characters`),
+});
 import { TaskComments, type TaskComment } from '@/components/TaskComments';
 import type { TaskWithRelations, Contact } from '@meeting-task-tool/shared';
-import { mockCategories } from '@/lib/mockData';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -58,6 +65,7 @@ export function TaskEditModal({
 }: TaskEditModalProps) {
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [goals, setGoals] = useState<FlattenedGoal[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [comments, setComments] = useState<TaskComment[]>([]);
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
     const [error, setError] = useState<string | null>(null);
@@ -124,6 +132,19 @@ export function TaskEditModal({
         loadGoals();
     }, []);
 
+    // Load categories for dropdown
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const response = await categoriesApi.list();
+                setCategories((response as any).categories || []);
+            } catch (err) {
+                console.error('Failed to load categories:', err);
+            }
+        };
+        loadCategories();
+    }, []);
+
     // Reset form when task changes
     useEffect(() => {
         if (task) {
@@ -161,6 +182,16 @@ export function TaskEditModal({
     const saveField = useCallback(async (updates: Record<string, any>) => {
         if (!task) return;
 
+        // Validate description if being updated
+        if (updates.description !== undefined) {
+            const result = taskSchema.safeParse({ description: updates.description });
+            if (!result.success) {
+                setError(result.error.issues[0].message);
+                setSaveStatus('error');
+                return;
+            }
+        }
+
         setSaveStatus('saving');
         setError(null);
 
@@ -181,6 +212,7 @@ export function TaskEditModal({
         } catch (err: any) {
             setSaveStatus('error');
             setError(err?.error || 'Failed to save');
+            toast.error('Failed to save task');
         }
     }, [task, onSuccess]);
 
@@ -332,7 +364,13 @@ export function TaskEditModal({
                             className="min-h-[80px]"
                             value={description}
                             onChange={(e) => handleDescriptionChange(e.target.value)}
+                            maxLength={MAX_DESCRIPTION_LENGTH}
                         />
+                        <div className="flex justify-end text-xs text-muted-foreground">
+                            <span className={description.length > MAX_DESCRIPTION_LENGTH * 0.9 ? 'text-orange-500' : ''}>
+                                {description.length.toLocaleString()} / {MAX_DESCRIPTION_LENGTH.toLocaleString()}
+                            </span>
+                        </div>
                     </div>
 
                     {/* Status & Priority */}
@@ -463,7 +501,7 @@ export function TaskEditModal({
                                 <SelectItem value="none">
                                     <span className="text-gray-500">No category</span>
                                 </SelectItem>
-                                {mockCategories.map((category) => (
+                                {categories.map((category) => (
                                     <SelectItem key={category.id} value={category.id}>
                                         {category.name}
                                     </SelectItem>

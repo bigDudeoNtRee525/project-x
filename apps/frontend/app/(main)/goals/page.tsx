@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { GoalFormModal } from '@/components/GoalFormModal';
 import { goalsApi, type Goal } from '@/lib/api';
-
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { toast } from 'sonner';
 
 export default function GoalsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,8 +59,10 @@ export default function GoalsPage() {
             fetchGoals();
             setIsDeleteOpen(false);
             setGoalToDelete(null);
+            toast.success('Goal deleted successfully');
         } catch (error) {
             console.error("Failed to delete goal:", error);
+            toast.error('Failed to delete goal');
         } finally {
             setIsDeleting(false);
         }

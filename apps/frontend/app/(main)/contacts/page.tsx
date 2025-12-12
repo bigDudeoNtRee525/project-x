@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { contactsApi } from '@/lib/api';
 import { Plus, RefreshCw, Users, Mail, Briefcase, Edit2, Trash2, Building2, Globe } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Contact } from '@meeting-task-tool/shared';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -116,6 +117,7 @@ export default function ContactsPage() {
                     email: data.email || undefined,
                     role: data.role || undefined,
                 });
+                toast.success('Contact updated successfully');
             } else {
                 // Create new contact
                 await contactsApi.create({
@@ -123,6 +125,7 @@ export default function ContactsPage() {
                     email: data.email || undefined,
                     role: data.role || undefined,
                 });
+                toast.success('Contact created successfully');
             }
             form.reset();
             setIsModalOpen(false);
@@ -130,6 +133,7 @@ export default function ContactsPage() {
             loadContacts();
         } catch (err: any) {
             setError(err?.error || 'Failed to save contact');
+            toast.error(err?.error || 'Failed to save contact');
         } finally {
             setIsSubmitting(false);
         }
@@ -142,8 +146,10 @@ export default function ContactsPage() {
             await contactsApi.delete(deletingContact.id);
             setDeletingContact(null);
             loadContacts();
+            toast.success('Contact deleted successfully');
         } catch (err: any) {
             setError(err?.error || 'Failed to delete contact');
+            toast.error(err?.error || 'Failed to delete contact');
         }
     };
 
@@ -192,7 +198,7 @@ export default function ContactsPage() {
                                             <FormItem>
                                                 <FormLabel>Name *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="John Doe" {...field} className="bg-input border-border" />
+                                                    <Input placeholder="John Doe" disabled={isSubmitting} {...field} className="bg-input border-border" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -205,7 +211,7 @@ export default function ContactsPage() {
                                             <FormItem>
                                                 <FormLabel>Email</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="john@example.com" type="email" {...field} className="bg-input border-border" />
+                                                    <Input placeholder="john@example.com" type="email" disabled={isSubmitting} {...field} className="bg-input border-border" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -218,7 +224,7 @@ export default function ContactsPage() {
                                             <FormItem>
                                                 <FormLabel>Role</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Developer, Manager, etc." {...field} className="bg-input border-border" />
+                                                    <Input placeholder="Developer, Manager, etc." disabled={isSubmitting} {...field} className="bg-input border-border" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

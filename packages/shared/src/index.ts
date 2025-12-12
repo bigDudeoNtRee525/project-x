@@ -60,7 +60,7 @@ export interface TaskAssignee {
 
 export interface Task {
   id: string;
-  meetingId: string;
+  meetingId: string | null;
   userId: string;
   teamId: string | null;
   title: string;
@@ -74,8 +74,8 @@ export interface Task {
   reviewedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  goalId?: string | null;
-  categoryId?: string | null;
+  goalId: string | null;
+  categoryId: string | null;
 }
 
 // Task with relations (for API responses)
@@ -101,23 +101,28 @@ export interface CreateMeetingRequest {
 }
 
 export interface CreateTaskRequest {
+  title: string;
   description: string;
-  title?: string;
-  assigneeIds?: string[]; // Array of contact IDs
-  deadline?: string | null; // ISO string
+  assigneeIds?: string[];
+  deadline?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
-  meetingId?: string;
+  meetingId?: string | null;
+  goalId?: string | null;
+  categoryId?: string | null;
   scope?: ResourceScope;
 }
 
 export interface UpdateTaskRequest {
+  title?: string;
   description?: string;
-  assigneeIds?: string[]; // Array of contact IDs
-  deadline?: string | null; // ISO string
+  assigneeIds?: string[];
+  deadline?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
   reviewed?: boolean;
+  goalId?: string | null;
+  categoryId?: string | null;
 }
 
 export interface CreateContactRequest {

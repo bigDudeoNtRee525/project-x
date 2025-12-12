@@ -1,36 +1,107 @@
 # Production Dockerfile for backend
+# Multi-stage build for minimal image size
+
+# ============================================
+# Stage 1: Install dependencies
+# ============================================
 FROM node:20-slim AS deps
+
 WORKDIR /app
+
+# Install OpenSSL and CA certificates (required for Prisma)
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY package*.json ./
+
+# Copy package files for all workspaces
+COPY package.json package-lock.json ./
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/shared/package.json ./packages/shared/
+
+# Install all dependencies (including devDependencies for build)
 RUN npm ci
 
+# ============================================
+# Stage 2: Build the application
+# ============================================
 FROM node:20-slim AS builder
+
 WORKDIR /app
+
+# Install OpenSSL (required for Prisma)
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /app/apps/backend/node_modules ./apps/backend/node_modules 2>/dev/null || true
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules 2>/dev/null || true
+
+# Copy source files
+COPY package.json package-lock.json ./
+COPY apps/backend ./apps/backend
+COPY packages/shared ./packages/shared
+
+# Build shared package first
 WORKDIR /app/packages/shared
-RUN npm run build || true
+RUN npm run build
+
+# Generate Prisma client and build backend
 WORKDIR /app/apps/backend
 RUN npx prisma generate
 RUN npm run build
 
+# ============================================
+# Stage 3: Production runner
+# ============================================
 FROM node:20-slim AS runner
+
 WORKDIR /app
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 expressjs
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
-COPY --from=builder /app/apps/backend/prisma ./apps/backend/prisma
-COPY --from=builder /app/packages/shared ./packages/shared
+
+# Install OpenSSL (required for Prisma runtime) and netcat (for health checks)
+RUN apt-get update && apt-get install -y openssl ca-certificates netcat-openbsd && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 expressjs
+
+# Copy package files (needed for workspace resolution)
+COPY package.json package-lock.json ./
 COPY apps/backend/package.json ./apps/backend/
-RUN chown -R expressjs:nodejs /app
-USER expressjs
+COPY packages/shared/package.json ./packages/shared/
+
+# Copy built shared package
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+
+# Copy Prisma schema and migrations
+COPY --from=builder /app/apps/backend/prisma ./apps/backend/prisma
+
+# Copy built backend
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+
+# Install production dependencies only
+RUN npm ci --omit=dev
+
+# Re-generate Prisma client for production (ensures correct binaries)
 WORKDIR /app/apps/backend
+RUN npx prisma generate
+
+# Copy entrypoint script
+COPY apps/backend/docker-entrypoint.sh /app/apps/backend/docker-entrypoint.sh
+RUN chmod +x /app/apps/backend/docker-entrypoint.sh
+
+# Set ownership
+RUN chown -R expressjs:nodejs /app
+
+# Switch to non-root user
+USER expressjs
+
+WORKDIR /app/apps/backend
+
+# Expose the port
 EXPOSE 3001
+
+# Environment variables
 ENV NODE_ENV=production
 ENV PORT=3001
+
+# Use entrypoint script for migrations
+ENTRYPOINT ["/app/apps/backend/docker-entrypoint.sh"]
 CMD ["node", "dist/server.js"]
