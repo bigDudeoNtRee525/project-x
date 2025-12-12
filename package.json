@@ -2,6 +2,9 @@
   "name": "meeting-task-tool",
   "version": "0.1.0",
   "private": true,
+  "prisma": {
+    "schema": "apps/backend/prisma/schema.prisma"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"

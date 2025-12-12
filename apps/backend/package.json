@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "main": "src/server.ts",
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
