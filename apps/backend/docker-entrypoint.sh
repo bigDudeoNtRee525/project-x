@@ -7,34 +7,28 @@ echo "Starting backend entrypoint script..."
 wait_for_db() {
     echo "Waiting for database to be ready..."
 
-    # Extract host and port from DATABASE_URL
-    # DATABASE_URL format: postgresql://user:password@host:port/database
-    DB_HOST=$(echo "$DATABASE_URL" | sed -n 's/.*@\([^:]*\):.*/\1/p')
-    DB_PORT=$(echo "$DATABASE_URL" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+    # Use postgres as host (Docker network name) and default port
+    DB_HOST="postgres"
+    DB_PORT="5432"
 
-    if [ -z "$DB_HOST" ] || [ -z "$DB_PORT" ]; then
-        echo "Could not parse DATABASE_URL, skipping wait..."
-        return 0
-    fi
+    echo "Checking connection to $DB_HOST:$DB_PORT..."
 
     MAX_RETRIES=30
     RETRY_COUNT=0
 
-    until nc -z "$DB_HOST" "$DB_PORT" 2>/dev/null || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if nc -z "$DB_HOST" "$DB_PORT" 2>/dev/null; then
+            echo "Database is ready!"
+            sleep 2
+            return 0
+        fi
         RETRY_COUNT=$((RETRY_COUNT + 1))
         echo "Database not ready yet (attempt $RETRY_COUNT/$MAX_RETRIES)..."
         sleep 2
     done
 
-    if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-        echo "Warning: Could not connect to database after $MAX_RETRIES attempts"
-        echo "Proceeding anyway..."
-    else
-        echo "Database is ready!"
-    fi
-
-    # Give it an extra moment
-    sleep 2
+    echo "Warning: Could not connect to database after $MAX_RETRIES attempts"
+    echo "Proceeding anyway..."
 }
 
 # Function to run database migrations
