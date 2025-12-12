@@ -13,7 +13,7 @@ Paste your meeting transcript or notes into the app.
 
 ### Step 2: AI Extracts Tasks
 The app automatically finds:
-- What needs to be done
+- What needs to be done1
 - Who should do it
 - When it's due
 - How important it is
