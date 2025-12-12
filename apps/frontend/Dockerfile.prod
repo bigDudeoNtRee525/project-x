@@ -67,8 +67,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Copy public folder (if it exists)
-COPY --from=builder /app/apps/frontend/public ./apps/frontend/public
+# Create public folder (may be empty)
+RUN mkdir -p ./apps/frontend/public
 
 # Copy standalone output
 # The standalone output includes server.js and necessary node_modules
